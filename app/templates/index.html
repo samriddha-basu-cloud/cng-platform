@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Projects — CNG Network Platform{% endblock %}
+{% block content %}
+<div class="shell">
+
+  <div style="margin: 20px 0 28px 0;">
+    <h1 style="font-size:28px;">CNG Supply Chain Network Design &amp; Scarcity Simulation Platform</h1>
+    <p class="text-secondary" style="max-width:680px;font-size:16px;">
+      Build a model of your gas supply network, run optimization to find the lowest-cost
+      setup, and test how it holds up during shortages — no coding or optimization
+      background needed. If you're new here, try <b>"Load demo network"</b> below first
+      to see a working example before building your own.
+    </p>
+  </div>
+
+  <div class="grid cols-2" style="margin-bottom:28px;">
+    <div class="card">
+      <div class="card-title">New Project</div>
+      <div class="field">
+        <label for="pName">Project name</label>
+        <input id="pName" placeholder="e.g. NCR Network Study, Mumbai Expansion Plan">
+      </div>
+      <div class="field">
+        <label for="pRegion">Region</label>
+        <input id="pRegion" placeholder="e.g. Delhi-NCR, Maharashtra, North-West Corridor">
+      </div>
+      <button class="btn primary" id="createBtn">Create empty project</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Explore Demo</div>
+      <p class="text-secondary" style="font-size:12.5px;">
+        Loads a pre-built illustrative network (3 sources, 3 CGS, 5 stations, 7 demand zones,
+        4 scarcity scenarios) so you can see the platform's features immediately.
+        <span class="tag-illustrative" style="margin-top:8px;">Illustrative demo data — not actual industry data</span>
+      </p>
+      <button class="btn" id="demoBtn" style="margin-top:10px;">Load demo network</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Projects</div>
+    <table class="data-table" id="projectsTable">
+      <thead><tr>
+        <th>Name</th><th>Region</th><th>Status</th><th>Network</th><th>Created</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <div class="icon">◇</div>
+      No projects yet. Create one above or load the demo network.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function loadProjects() {
+  const projects = await api.get('/api/projects');
+  const tbody = document.querySelector('#projectsTable tbody');
+  tbody.innerHTML = '';
+  document.getElementById('emptyState').style.display = projects.length ? 'none' : 'block';
+  for (const p of projects) {
+    const c = p.counts;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-cell"><a href="/project/${p.id}">${p.name}</a> ${p.is_demo ? '<span class="badge demo">demo</span>' : ''}</td>
+      <td class="text-cell">${p.region || '—'}</td>
+      <td class="text-cell"><span class="badge">${p.status}</span></td>
+      <td>${c.sources}S / ${c.corridors}C / ${c.cgs}CGS / ${c.stations}STN / ${c.demand_zones}DZ</td>
+      <td class="text-cell">${new Date(p.created_at).toLocaleDateString()}</td>
+      <td><button class="btn small danger ghost" data-id="${p.id}">Delete</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  tbody.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('Delete this project? This cannot be undone.')) return;
+      await api.delete('/api/projects/' + btn.dataset.id);
+      toast('Project deleted', 'ok');
+      loadProjects();
+    });
+  });
+}
+
+document.getElementById('createBtn').addEventListener('click', async () => {
+  const name = document.getElementById('pName').value.trim();
+  if (!name) { toast('Project name is required', 'error'); return; }
+  try {
+    const p = await api.post('/api/projects', { name, region: document.getElementById('pRegion').value });
+    window.location.href = '/project/' + p.id;
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+document.getElementById('demoBtn').addEventListener('click', async () => {
+  try {
+    const p = await api.post('/api/projects/demo', {});
+    window.location.href = '/project/' + p.id;
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+loadProjects();
+</script>
+{% endblock %}

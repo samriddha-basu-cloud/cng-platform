@@ -1,0 +1,11 @@
+Flask==3.0.3
+Pyomo==6.7.3
+highspy==1.7.2
+networkx==3.3
+pandas==2.2.2
+numpy==1.26.4
+scipy==1.13.1
+openpyxl==3.1.5
+reportlab==4.2.5
+pytest==8.3.3
+gunicorn==22.0.0

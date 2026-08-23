@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}Workspace — CNG Network Platform{% endblock %}
+{% block extra_head %}
+<style>
+  .section { display: none; }
+  .section.active { display: block; }
+  .phase-lock { opacity: 0.5; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="stepper" id="stepper">
+  <div class="step active" data-section="setup"><span class="num">1</span> Setup</div>
+  <div class="step" data-section="network"><span class="num">2</span> Network</div>
+  <div class="step" data-section="map"><span class="num">3</span> Map</div>
+  <div class="step" data-section="dashboard"><span class="num">4</span> Dashboard</div>
+  <div class="step" data-section="scenarios"><span class="num">5</span> Scenarios</div>
+  <div class="step" data-section="optimize"><span class="num">6</span> Optimize</div>
+  <div class="step" data-section="simulate"><span class="num">7</span> Simulate</div>
+  <div class="step" data-section="analyze"><span class="num">8</span> Analyze</div>
+  <div class="step" data-section="report"><span class="num">9</span> Report</div>
+</div>
+
+<div class="shell">
+
+  <!-- ================= SETUP ================= -->
+  <section class="section active" id="section-setup">
+    <div class="card" style="max-width:640px;">
+      <div class="card-title">Project Setup <span id="demoBadge"></span></div>
+      <div class="grid cols-2">
+        <div class="field"><label>Project name</label><input id="s-name" placeholder="e.g. NCR Network Study, Mumbai Expansion Plan"></div>
+        <div class="field"><label>Region</label><input id="s-region" placeholder="e.g. Delhi-NCR, Maharashtra, North-West Corridor"></div>
+        <div class="field"><label>Currency</label><input id="s-currency" placeholder="e.g. INR, USD, EUR"></div>
+        <div class="field"><label>Gas unit</label><input id="s-gas-unit" placeholder="e.g. SCMD, MMSCMD"></div>
+        <div class="field"><label>Demand unit</label><input id="s-demand-unit" placeholder="e.g. SCMD, MMSCMD"></div>
+        <div class="field">
+          <label>Time granularity</label>
+          <select id="s-granularity"><option>daily</option><option>monthly</option><option>annual</option></select>
+        </div>
+        <div class="field"><label>Planning horizon (years)</label><input type="number" id="s-horizon" placeholder="e.g. 3, 5, 10"></div>
+        <div class="field"><label>Number of periods</label><input type="number" id="s-periods" placeholder="e.g. 1, 4, 12"></div>
+      </div>
+      <div class="field"><label>Description</label><textarea id="s-desc" rows="2" placeholder="e.g. Evaluating whether to add a new CGS to cover Tier-2 city growth"></textarea></div>
+      <button class="btn primary" id="saveSetupBtn">Save setup</button>
+      <span class="text-muted" style="margin-left:10px;font-size:11.5px;">Model status: <span id="s-status" class="mono"></span></span>
+    </div>
+  </section>
+
+  <!-- ================= NETWORK ================= -->
+  <section class="section" id="section-network">
+    <div class="tabs" id="networkTabs">
+      <div class="tab active" data-entity="sources">Sources</div>
+      <div class="tab" data-entity="corridors">Corridors</div>
+      <div class="tab" data-entity="cgs">CGS</div>
+      <div class="tab" data-entity="stations">CNG Stations</div>
+      <div class="tab" data-entity="demand">Demand Zones</div>
+      <div class="tab" data-entity="priorities">Priority Classes</div>
+    </div>
+    <div class="card" id="entityPanel"></div>
+  </section>
+
+  <!-- ================= MAP ================= -->
+  <section class="section" id="section-map">
+    <div class="card">
+      <div class="card-title">
+        Network Map
+        <span class="text-muted" style="font-size:11px;font-weight:400;text-transform:none;">
+          ● Source &nbsp; ● CGS &nbsp; ● Station &nbsp; ● Demand &nbsp; ┄ candidate infra &nbsp; ┄ service link
+        </span>
+      </div>
+      <div class="map-container"><div id="map" style="height:100%;"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section class="section" id="section-dashboard">
+    <div class="grid cols-4" id="kpiRow" style="margin-bottom:18px;"></div>
+
+    <div class="grid cols-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">Guided Workflow Checklist</div>
+        <div id="checklist" class="mono" style="font-size:12.5px; line-height:2;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Network Validation</div>
+        <div id="validationList" style="font-size:12.5px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <strong>Network Resilience Summary</strong>
+        <button class="btn small" id="runSummaryBtn">Run full analysis (solves normal + severe scenario)</button>
+      </div>
+      <div id="summaryPanel" class="text-muted" style="font-size:12.5px;">Not yet run.</div>
+    </div>
+  </section>
+
+  <!-- ================= SCENARIOS ================= -->
+  <section class="section" id="section-scenarios">
+    <div class="toolbar">
+      <strong>Scarcity &amp; Demand Scenarios</strong>
+      <button class="btn primary small" id="addScenarioBtn">+ Add Scenario</button>
+    </div>
+    <div id="scenarioFormWrap" style="display:none;margin-bottom:16px;"></div>
+    <div class="card" style="margin-bottom:16px;">
+      <table class="data-table" id="scenarioTable">
+        <thead><tr><th>Name</th><th>Probability</th><th>Default</th><th>Demand ×</th><th>Pipeline Cap ×</th><th>Transport Cost ×</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <strong>Scenario Comparison</strong>
+        <button class="btn small" id="runComparisonBtn">Run comparison across default scenarios</button>
+      </div>
+      <div id="comparisonResult"></div>
+    </div>
+  </section>
+
+  <!-- ================= OPTIMIZE ================= -->
+  <section class="section" id="section-optimize">
+    <div class="grid cols-2" style="align-items:start;">
+      <div class="card">
+        <div class="card-title">Run Optimization</div>
+        <div class="field">
+          <label>Mode</label>
+          <select id="optMode">
+            <option value="deterministic">Deterministic (single scenario)</option>
+            <option value="stochastic">Two-stage stochastic (all default scenarios)</option>
+            <option value="robust">Robust (worst-case supply range)</option>
+          </select>
+        </div>
+        <div class="field" id="optScenarioField">
+          <label>Scenario (deterministic only — optional, defaults to base network)</label>
+          <select id="optScenario"><option value="">— base network, no scenario —</option></select>
+        </div>
+        <div id="robustFields" style="display:none;">
+          <div class="field">
+            <label>Risk posture</label>
+            <select id="robustMode"><option value="conservative">Conservative</option><option value="balanced" selected>Balanced</option><option value="aggressive">Aggressive</option></select>
+          </div>
+          <div class="grid cols-2">
+            <div class="field"><label>Supply range — low</label><input type="number" step="0.01" id="robustLo" value="0.6"></div>
+            <div class="field"><label>Supply range — high</label><input type="number" step="0.01" id="robustHi" value="1.0"></div>
+          </div>
+          <p class="text-muted" style="font-size:11.5px;">Conservative solves against the low end of the range; aggressive against the high end; balanced against the midpoint.</p>
+        </div>
+        <button class="btn primary" id="runOptBtn">Run Optimization</button>
+        <div id="optProgress" class="mono text-muted" style="margin-top:12px;font-size:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Solver</div>
+        <div id="solverDetail" class="mono" style="font-size:12.5px;line-height:1.9;"></div>
+      </div>
+    </div>
+
+    <div id="optResults" style="margin-top:18px;"></div>
+  </section>
+
+  <!-- ================= SIMULATE ================= -->
+  <section class="section" id="section-simulate">
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">One-Click Experiments</div>
+      <div id="presetButtons" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      <div id="whatifResult" style="margin-top:16px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Time-Series Simulation</div>
+      <p class="text-muted" style="font-size:11.5px;">
+        Each period compounds every demand zone's own growth rate. This runs one independent
+        optimal solve per period (no inventory carried between periods) — a simplification, noted
+        for transparency.
+      </p>
+      <div class="field" style="max-width:200px;"><label>Number of periods</label><input type="number" id="simPeriods" value="5"></div>
+      <button class="btn" id="runSimBtn">Run Timeline</button>
+      <div id="simChartWrap" style="margin-top:16px;height:280px;"><canvas id="simChart"></canvas></div>
+      <div id="simTableWrap" style="margin-top:16px;"></div>
+    </div>
+  </section>
+
+  <!-- ================= ANALYZE ================= -->
+  <section class="section" id="section-analyze">
+    <div class="tabs" id="analyzeTabs">
+      <div class="tab active" data-panel="resilience">Resilience</div>
+      <div class="tab" data-panel="pareto">Cost-Service Pareto</div>
+      <div class="tab" data-panel="sensitivity">Sensitivity</div>
+      <div class="tab" data-panel="heatmap">Scenario Heatmap</div>
+      <div class="tab" data-panel="recommendations">Recommendations</div>
+    </div>
+    <div class="card" id="analyzePanel"></div>
+  </section>
+
+  <!-- ================= REPORT ================= -->
+  <section class="section" id="section-report">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-title">Export</div>
+        <p class="text-muted" style="font-size:11.5px;">Every export re-solves the model fresh — nothing is cached from a stale run.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+          <button class="btn" data-fmt="json">Export JSON</button>
+          <button class="btn" data-fmt="csv">Export CSV</button>
+          <button class="btn" data-fmt="excel">Export Excel</button>
+          <button class="btn" data-fmt="pdf">Export PDF (Executive Report)</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Mode</div>
+        <div class="tabs" id="reportModeTabs">
+          <div class="tab active" data-mode="industry">Industry Mode</div>
+          <div class="tab" data-mode="academic">Academic Mode</div>
+        </div>
+        <p class="text-muted" style="font-size:11.5px;">Academic mode exposes the full mathematical formulation (sets, variables, objective, constraints, solver info) for research/dissertation use.</p>
+      </div>
+    </div>
+    <div class="card" id="reportPanel" style="margin-top:16px;"></div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/entity_config.js') }}"></script>
+<script src="{{ url_for('static', filename='js/network_builder.js') }}"></script>
+<script src="{{ url_for('static', filename='js/network_map.js') }}"></script>
+<script>
+const PROJECT_ID = {{ project_id }};
+let currentProject = null;
+
+// ---- section / stepper navigation ----
+document.querySelectorAll('.step[data-section]').forEach(el => {
+  el.addEventListener('click', () => showSection(el.dataset.section));
+});
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelectorAll('.step[data-section]').forEach(s => s.classList.toggle('active', s.dataset.section === name));
+  if (name === 'map') {
+    if (!networkMap) initNetworkMap('map');
+    setTimeout(() => { networkMap.invalidateSize(); refreshNetworkMap(PROJECT_ID); }, 50);
+  }
+  if (name === 'dashboard') refreshDashboard();
+}
+
+// ---- setup ----
+async function loadSetup() {
+  currentProject = await api.get(`/api/projects/${PROJECT_ID}`);
+  const p = currentProject;
+  document.getElementById('s-name').value = p.name;
+  document.getElementById('s-region').value = p.region || '';
+  document.getElementById('s-currency').value = p.currency;
+  document.getElementById('s-gas-unit').value = p.gas_unit;
+  document.getElementById('s-demand-unit').value = p.demand_unit;
+  document.getElementById('s-granularity').value = p.time_granularity;
+  document.getElementById('s-horizon').value = p.planning_horizon_years;
+  document.getElementById('s-periods').value = p.num_periods;
+  document.getElementById('s-desc').value = p.description || '';
+  document.getElementById('s-status').textContent = p.status;
+  document.getElementById('demoBadge').innerHTML = p.is_demo
+    ? '<span class="tag-illustrative">illustrative demo data</span>' : '';
+}
+
+document.getElementById('saveSetupBtn').addEventListener('click', async () => {
+  try {
+    await api.patch(`/api/projects/${PROJECT_ID}`, {
+      name: document.getElementById('s-name').value,
+      region: document.getElementById('s-region').value,
+      currency: document.getElementById('s-currency').value,
+      gas_unit: document.getElementById('s-gas-unit').value,
+      demand_unit: document.getElementById('s-demand-unit').value,
+      time_granularity: document.getElementById('s-granularity').value,
+      planning_horizon_years: parseInt(document.getElementById('s-horizon').value || 0),
+      num_periods: parseInt(document.getElementById('s-periods').value || 1),
+      description: document.getElementById('s-desc').value,
+    });
+    toast('Setup saved', 'ok');
+    loadSetup();
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+// ---- network tabs ----
+async function loadEntityTab(entityKey) {
+  const panel = document.getElementById('entityPanel');
+  await renderEntitySection(panel, PROJECT_ID, entityKey);
+}
+document.querySelectorAll('#networkTabs .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#networkTabs .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    loadEntityTab(tab.dataset.entity);
+  });
+});
+window.onNetworkChanged = () => { currentProject = null; };
+
+// ---- dashboard ----
+async function refreshDashboard() {
+  const p = await api.get(`/api/projects/${PROJECT_ID}`);
+  currentProject = p;
+  const c = p.counts;
+  const kpis = [
+    { label: 'Sources', value: c.sources, unit: '' },
+    { label: 'Corridors', value: c.corridors, unit: '' },
+    { label: 'CGS', value: c.cgs, unit: '' },
+    { label: 'CNG Stations', value: c.stations, unit: '' },
+    { label: 'Demand Zones', value: c.demand_zones, unit: '' },
+    { label: 'Scenarios', value: c.scenarios, unit: '' },
+    { label: 'Model Status', value: p.status, unit: '', text: true },
+    { label: 'Planning Horizon', value: p.planning_horizon_years, unit: 'yrs' },
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="label">${k.label}</div>
+      <div class="value" style="${k.text ? 'font-size:16px;' : ''}">${k.value}${k.unit ? `<span class="unit">${k.unit}</span>` : ''}</div>
+    </div>
+  `).join('');
+
+  const checklist = [
+    { done: c.sources > 0, label: `Sources configured (${c.sources})` },
+    { done: c.cgs > 0, label: `City Gate Stations configured (${c.cgs})` },
+    { done: c.stations > 0, label: `CNG Stations configured (${c.stations})` },
+    { done: c.demand_zones > 0, label: `Demand zones configured (${c.demand_zones})` },
+    { done: c.corridors > 0, label: `Corridors configured (${c.corridors})` },
+    { done: c.scenarios > 0, label: `Scenarios configured (${c.scenarios})` },
+  ];
+  document.getElementById('checklist').innerHTML = checklist.map(item =>
+    `<div style="color:${item.done ? 'var(--ok)' : 'var(--text-muted)'};">${item.done ? '✓' : '○'} ${item.label}</div>`
+  ).join('');
+
+  const validation = await api.get(`/api/network/${PROJECT_ID}/validate`);
+  const vList = document.getElementById('validationList');
+  if (validation.issues.length === 0) {
+    vList.innerHTML = `<div style="color:var(--ok);">✓ No structural issues detected.</div>`;
+  } else {
+    vList.innerHTML = validation.issues.map(i => `
+      <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);">
+        <span class="badge ${i.level === 'error' ? 'critical' : 'warn'}">${i.level}</span>
+        <span style="margin-left:8px;">${i.message}</span>
+      </div>
+    `).join('');
+  }
+}
+
+// ---- init ----
+loadSetup();
+loadEntityTab('sources');
+</script>
+<script src="{{ url_for('static', filename='js/workspace_extra.js') }}"></script>
+{% endblock %}

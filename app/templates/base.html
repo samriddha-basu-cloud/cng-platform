@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}CNG Network Platform{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> CNG Network Design &amp; Scarcity Platform</div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <div class="solver-chip" id="solverChip"><span class="led"></span><span id="solverLabel">checking solver…</span></div>
+    <a href="/" class="btn ghost small">All Projects</a>
+  </div>
+</div>
+{% block content %}{% endblock %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script>
+(async function() {
+  try {
+    const info = await api.get('/api/meta/solvers');
+    const chip = document.getElementById('solverChip');
+    const label = document.getElementById('solverLabel');
+    if (info.active_solver_key !== 'none') {
+      chip.classList.add('active');
+      label.textContent = 'Active Solver: ' + info.active_solver;
+    } else {
+      label.textContent = 'No solver available';
+    }
+  } catch (e) { console.error(e); }
+})();
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
