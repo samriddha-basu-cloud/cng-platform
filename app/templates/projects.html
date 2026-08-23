@@ -8,12 +8,13 @@
     <p class="text-secondary" style="max-width:680px;font-size:16px;">
       Build a model of your gas supply network, run optimization to find the lowest-cost
       setup, and test how it holds up during shortages — no coding or optimization
-      background needed. If you're new here, try <b>"Load demo network"</b> below first
+      background needed. If you're new here, try one of the demo networks below first
       to see a working example before building your own.
+      <a href="/">← Back to overview</a>
     </p>
   </div>
 
-  <div class="grid cols-2" style="margin-bottom:28px;">
+  <div class="grid cols-3" style="margin-bottom:28px;">
     <div class="card">
       <div class="card-title">New Project</div>
       <div class="field">
@@ -28,13 +29,24 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Explore Demo</div>
+      <div class="card-title">Demo: Simple</div>
       <p class="text-secondary" style="font-size:12.5px;">
-        Loads a pre-built illustrative network (3 sources, 3 CGS, 5 stations, 7 demand zones,
-        4 scarcity scenarios) so you can see the platform's features immediately.
-        <span class="tag-illustrative" style="margin-top:8px;">Illustrative demo data — not actual industry data</span>
+        3 sources, 3 City Gate Stations, 5 CNG stations, 7 demand zones, 4 scarcity
+        scenarios — the fastest way to see every feature working end to end.
       </p>
-      <button class="btn" id="demoBtn" style="margin-top:10px;">Load demo network</button>
+      <span class="tag-illustrative" style="margin-top:4px;display:inline-block;">Illustrative demo data</span>
+      <div><button class="btn" id="demoSimpleBtn" style="margin-top:12px;">Load simple demo</button></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Demo: Advanced</div>
+      <p class="text-secondary" style="font-size:12.5px;">
+        5 sources (all types), 5 CGS, 9 stations, 9 demand zones across a wider
+        geography, mixed existing/candidate infrastructure, pipeline + virtual
+        corridors, and a 5th scenario with a deliberate single-point-of-failure outage.
+      </p>
+      <span class="tag-illustrative" style="margin-top:4px;display:inline-block;">Illustrative demo data</span>
+      <div><button class="btn" id="demoAdvancedBtn" style="margin-top:12px;">Load advanced demo</button></div>
     </div>
   </div>
 
@@ -48,7 +60,7 @@
     </table>
     <div id="emptyState" class="empty-state" style="display:none;">
       <div class="icon">◇</div>
-      No projects yet. Create one above or load the demo network.
+      No projects yet. Create one above or load a demo network.
     </div>
   </div>
 </div>
@@ -90,16 +102,32 @@ document.getElementById('createBtn').addEventListener('click', async () => {
   if (!name) { toast('Project name is required', 'error'); return; }
   try {
     const p = await api.post('/api/projects', { name, region: document.getElementById('pRegion').value });
+    toast('Project created', 'ok');
     window.location.href = '/project/' + p.id;
   } catch (e) { toast(e.message, 'error'); }
 });
 
-document.getElementById('demoBtn').addEventListener('click', async () => {
+async function loadDemo(variant) {
   try {
-    const p = await api.post('/api/projects/demo', {});
+    const p = await api.post('/api/projects/demo?variant=' + variant, {});
+    toast('Demo network loaded', 'ok');
     window.location.href = '/project/' + p.id;
   } catch (e) { toast(e.message, 'error'); }
-});
+}
+document.getElementById('demoSimpleBtn').addEventListener('click', () => loadDemo('simple'));
+document.getElementById('demoAdvancedBtn').addEventListener('click', () => loadDemo('advanced'));
+
+// Deep-link support: the landing page's case-study buttons link here with
+// ?autoload=simple or ?autoload=advanced so a visitor can go straight from
+// reading about a case study to the running network in one click.
+(function checkAutoload() {
+  const params = new URLSearchParams(window.location.search);
+  const variant = params.get('autoload');
+  if (variant === 'simple' || variant === 'advanced') {
+    toast('Loading ' + variant + ' demo network…', 'info');
+    loadDemo(variant);
+  }
+})();
 
 loadProjects();
 </script>

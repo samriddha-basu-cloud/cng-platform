@@ -10,15 +10,15 @@
 {% block content %}
 
 <div class="stepper" id="stepper">
-  <div class="step active" data-section="setup"><span class="num">1</span> Setup</div>
-  <div class="step" data-section="network"><span class="num">2</span> Network</div>
-  <div class="step" data-section="map"><span class="num">3</span> Map</div>
-  <div class="step" data-section="dashboard"><span class="num">4</span> Dashboard</div>
-  <div class="step" data-section="scenarios"><span class="num">5</span> Scenarios</div>
-  <div class="step" data-section="optimize"><span class="num">6</span> Optimize</div>
-  <div class="step" data-section="simulate"><span class="num">7</span> Simulate</div>
-  <div class="step" data-section="analyze"><span class="num">8</span> Analyze</div>
-  <div class="step" data-section="report"><span class="num">9</span> Report</div>
+  <div class="step active" data-section="setup" title="Project metadata: name, region, units, planning horizon"><span class="num">1</span> Setup</div>
+  <div class="step" data-section="network" title="Add sources, corridors, CGS, stations, demand zones, priority classes"><span class="num">2</span> Network</div>
+  <div class="step" data-section="map" title="Geographic view of the network you've built"><span class="num">3</span> Map</div>
+  <div class="step" data-section="dashboard" title="Validation status and a one-screen resilience summary"><span class="num">4</span> Dashboard</div>
+  <div class="step" data-section="scenarios" title="Define scarcity/demand scenarios and compare them"><span class="num">5</span> Scenarios</div>
+  <div class="step" data-section="optimize" title="Run the MILP solver: deterministic, stochastic, or robust"><span class="num">6</span> Optimize</div>
+  <div class="step" data-section="simulate" title="One-click shocks and multi-period growth timeline"><span class="num">7</span> Simulate</div>
+  <div class="step" data-section="analyze" title="Resilience, Pareto frontier, sensitivity, recommendations"><span class="num">8</span> Analyze</div>
+  <div class="step" data-section="report" title="Export results; toggle Industry vs Academic mode"><span class="num">9</span> Report</div>
 </div>
 
 <div class="shell">
@@ -98,6 +98,11 @@
 
   <!-- ================= SCENARIOS ================= -->
   <section class="section" id="section-scenarios">
+    <p class="text-muted" style="font-size:12.5px;margin-top:-4px;margin-bottom:16px;">
+      A scenario is a named set of overrides — reduced source availability, higher demand, a
+      corridor or station outage — applied on top of your base network. "Default" scenarios are
+      the ones used in comparisons and in the two-stage stochastic solve on the Optimize tab.
+    </p>
     <div class="toolbar">
       <strong>Scarcity &amp; Demand Scenarios</strong>
       <button class="btn primary small" id="addScenarioBtn">+ Add Scenario</button>
@@ -115,6 +120,10 @@
         <strong>Scenario Comparison</strong>
         <button class="btn small" id="runComparisonBtn">Run comparison across default scenarios</button>
       </div>
+      <p class="text-muted" style="font-size:12.5px;margin-top:-6px;">
+        Solves the network once per default scenario and lines the results up side by side —
+        rows that got worse than the baseline are highlighted.
+      </p>
       <div id="comparisonResult"></div>
     </div>
   </section>
@@ -124,6 +133,11 @@
     <div class="grid cols-2" style="align-items:start;">
       <div class="card">
         <div class="card-title">Run Optimization</div>
+        <p class="text-muted" style="font-size:12.5px;margin-top:-4px;">
+          Solves a Mixed-Integer Linear Program: which facilities to open and how to route
+          gas through them at minimum total cost, subject to capacity and service-level
+          constraints. See the landing page's Framework tab for the exact formulation.
+        </p>
         <div class="field">
           <label>Mode</label>
           <select id="optMode">
@@ -132,6 +146,9 @@
             <option value="robust">Robust (worst-case supply range)</option>
           </select>
         </div>
+        <p class="text-muted" style="font-size:11.5px;margin-top:-10px;" id="optModeHint">
+          Solves the network exactly as configured, or against one selected scenario's overrides.
+        </p>
         <div class="field" id="optScenarioField">
           <label>Scenario (deterministic only — optional, defaults to base network)</label>
           <select id="optScenario"><option value="">— base network, no scenario —</option></select>
@@ -163,6 +180,10 @@
   <section class="section" id="section-simulate">
     <div class="card" style="margin-bottom:16px;">
       <div class="card-title">One-Click Experiments</div>
+      <p class="text-muted" style="font-size:12.5px;margin-top:-6px;">
+        Each button applies a named shock on top of your current network and re-solves,
+        showing a before/after comparison — a fast way to stress-test without hand-building a scenario.
+      </p>
       <div id="presetButtons" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
       <div id="whatifResult" style="margin-top:16px;"></div>
     </div>
@@ -183,12 +204,16 @@
 
   <!-- ================= ANALYZE ================= -->
   <section class="section" id="section-analyze">
+    <p class="text-muted" style="font-size:12.5px;margin-top:-4px;margin-bottom:16px;">
+      Deeper diagnostics computed from real solves against your network — resilience scoring,
+      cost-vs-service trade-offs, sensitivity to individual parameters, and rule-based recommendations.
+    </p>
     <div class="tabs" id="analyzeTabs">
-      <div class="tab active" data-panel="resilience">Resilience</div>
-      <div class="tab" data-panel="pareto">Cost-Service Pareto</div>
-      <div class="tab" data-panel="sensitivity">Sensitivity</div>
-      <div class="tab" data-panel="heatmap">Scenario Heatmap</div>
-      <div class="tab" data-panel="recommendations">Recommendations</div>
+      <div class="tab active" data-panel="resilience" title="A transparent, weighted score across four components">Resilience</div>
+      <div class="tab" data-panel="pareto" title="Minimum achievable cost at each service-level target">Cost-Service Pareto</div>
+      <div class="tab" data-panel="sensitivity" title="Which single parameter change moves cost the most">Sensitivity</div>
+      <div class="tab" data-panel="heatmap" title="Cost across two parameters varied together">Scenario Heatmap</div>
+      <div class="tab" data-panel="recommendations" title="Rule-based suggestions traced back to real solve output">Recommendations</div>
     </div>
     <div class="card" id="analyzePanel"></div>
   </section>

@@ -4,8 +4,13 @@ page_bp = Blueprint("pages", __name__)
 
 
 @page_bp.get("/")
-def home():
-    return render_template("index.html")
+def landing():
+    return render_template("landing.html")
+
+
+@page_bp.get("/projects")
+def projects_app():
+    return render_template("projects.html")
 
 
 @page_bp.get("/project/<int:project_id>")

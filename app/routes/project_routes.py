@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from app.data import repo
-from app.data.demo_seed import seed_demo_project
+from app.data.demo_seed import seed_demo_project_simple, seed_demo_project_advanced
 from app.utils.validation import require_fields, ValidationError
 from app.utils.usage_logger import log_usage
 
@@ -26,8 +26,12 @@ def create_project():
 
 @project_bp.post("/demo")
 def create_demo_project():
-    project = seed_demo_project()
-    log_usage("demo_loaded", project.id)
+    variant = (request.args.get("variant") or "simple").lower()
+    if variant == "advanced":
+        project = seed_demo_project_advanced()
+    else:
+        project = seed_demo_project_simple()
+    log_usage("demo_loaded", project.id, variant)
     return jsonify(project.to_dict()), 201
 
 

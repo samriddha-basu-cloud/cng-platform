@@ -140,9 +140,15 @@ async function populateScenarioDropdown() {
     scenarios.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 }
 
+const OPT_MODE_HINTS = {
+  deterministic: "Solves the network exactly as configured, or against one selected scenario's overrides.",
+  stochastic: "One solve, shared facility decisions, but flows adapt per scenario — minimizes the probability-weighted expected cost across all default scenarios at once.",
+  robust: "Ignores scenario probabilities entirely; solves against a single worst-case supply-availability assumption you choose below.",
+};
 document.getElementById('optMode').addEventListener('change', (e) => {
   document.getElementById('optScenarioField').style.display = e.target.value === 'deterministic' ? 'block' : 'none';
   document.getElementById('robustFields').style.display = e.target.value === 'robust' ? 'block' : 'none';
+  document.getElementById('optModeHint').textContent = OPT_MODE_HINTS[e.target.value] || '';
 });
 
 async function loadSolverDetail() {

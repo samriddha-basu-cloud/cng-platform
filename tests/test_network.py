@@ -23,6 +23,37 @@ def test_demo_seed_has_expected_shape(client, demo_project_id):
     assert counts["scenarios"] == 4
 
 
+def test_advanced_demo_seed_has_expected_shape_and_solves(client):
+    r = client.post("/api/projects/demo?variant=advanced")
+    assert r.status_code == 201
+    pid = r.get_json()["id"]
+    counts = r.get_json()["counts"]
+    assert counts["sources"] == 5
+    assert counts["cgs"] == 5
+    assert counts["stations"] == 9
+    assert counts["demand_zones"] == 9
+    assert counts["scenarios"] == 5
+
+    r = client.get(f"/api/network/{pid}/validate")
+    assert r.get_json()["is_valid"] is True
+
+    r = client.post(f"/api/optimize/{pid}", json={})
+    res = r.get_json()
+    assert res["status"] == "optimal"
+    assert res["kpis"]["demand_fulfilment_pct"] == 1.0
+
+    # the outage scenario knocks out the only station serving Nagpur -
+    # this should come back infeasible with a disconnected-zone diagnosis,
+    # not silently "succeed" with data loss
+    scenarios = client.get(f"/api/scenarios/{pid}").get_json()
+    outage = next(s for s in scenarios if s["name"] == "Regional Pipeline Outage")
+    r = client.post(f"/api/optimize/{pid}", json={"scenario_id": outage["id"]})
+    res = r.get_json()
+    assert res["status"] == "infeasible"
+    causes = [f["cause"] for f in res["diagnostics"]["findings"]]
+    assert "Disconnected demand zone" in causes
+
+
 def test_dynamic_network_size_is_not_hardcoded(client):
     r = client.post("/api/projects", json={"name": "Big Net"})
     pid = r.get_json()["id"]

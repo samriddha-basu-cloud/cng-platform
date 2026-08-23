@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% block title %}CNG Network Design & Scarcity Platform — Overview{% endblock %}
+{% block extra_head %}
+<style>
+  .lp-section { display: none; }
+  .lp-section.active { display: block; }
+  .lp-shell { max-width: 980px; margin: 0 auto; padding: 32px 28px 64px; }
+  .lp-hero { padding: 28px 0 8px; }
+  .lp-hero h1 { font-size: 30px; line-height: 1.25; max-width: 780px; }
+  .lp-hero p.lead { font-size: 16.5px; color: var(--text-secondary); max-width: 720px; }
+  .lp-body p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+  .lp-body h3 { font-size: 17px; margin-top: 26px; }
+  .lp-body ul, .lp-body ol { font-size: 15px; color: var(--text-secondary); line-height: 1.8; padding-left: 22px; }
+  .lp-body li { margin-bottom: 6px; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+  .pill { font-family: var(--font-mono); font-size: 12px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-alt); color: var(--text-secondary); }
+  .formula-block { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; font-family: var(--font-mono); font-size: 13.5px; line-height: 2; color: var(--text-primary); overflow-x: auto; }
+  .formula-block .comment { color: var(--text-muted); }
+  .cs-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 18px; }
+  .cs-card h4 { margin: 0 0 6px 0; font-size: 16px; }
+  .cs-stats { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+  .cs-stat { font-family: var(--font-mono); font-size: 11.5px; background: var(--accent-bg); color: var(--accent-dim); border-radius: 4px; padding: 3px 9px; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="tabs" id="lpTabs" style="max-width:980px;margin:0 auto;padding:0 28px;margin-top:8px;">
+  <div class="tab active" data-lp="overview">Overview</div>
+  <div class="tab" data-lp="gap">The Gap</div>
+  <div class="tab" data-lp="assumptions">Assumptions</div>
+  <div class="tab" data-lp="case-studies">Case Studies</div>
+  <div class="tab" data-lp="objectives">Objectives</div>
+  <div class="tab" data-lp="claims">Claims</div>
+  <div class="tab" data-lp="industry">Industry Relevance</div>
+  <div class="tab" data-lp="framework">Framework</div>
+  <div class="tab" data-lp="notes">Notes on Results</div>
+</div>
+
+<div class="lp-shell">
+
+  <!-- ================= OVERVIEW ================= -->
+  <section class="lp-section active" id="lp-overview">
+    <div class="lp-hero">
+      <h1>CNG Supply Chain Network Design &amp; Scarcity Simulation Platform</h1>
+      <p class="lead">
+        A decision-support system for designing Compressed Natural Gas distribution
+        networks that stay cost-effective under normal operation and stay
+        <em>functional</em> — not just cheap — when gas supply is uncertain or rationed.
+      </p>
+      <div class="pill-row">
+        <span class="pill">Facility Location</span>
+        <span class="pill">Mixed-Integer Linear Programming</span>
+        <span class="pill">Two-Stage Stochastic Optimization</span>
+        <span class="pill">Scarcity &amp; Resilience Analysis</span>
+      </div>
+      <div style="margin-top:22px;">
+        <a href="/projects" class="btn primary">Open the Projects App →</a>
+      </div>
+    </div>
+
+    <div class="lp-body">
+      <h3>What problem does this answer?</h3>
+      <p>
+        Given a configurable CNG supply network — gas sources, City Gate Stations (CGS),
+        retail CNG stations, and demand zones — uncertain gas availability, and
+        service-priority requirements, <strong>what network configuration and gas
+        allocation strategy minimizes total cost while maintaining acceptable service
+        levels, under both normal and scarcity conditions?</strong>
+      </p>
+      <h3>Who this is for</h3>
+      <p>
+        The platform is built to be read two ways at once. An <strong>academic</strong>
+        reader can inspect the exact mathematical formulation, the solver used, and the
+        assumptions behind every number — see the Framework and Notes on Results tabs.
+        An <strong>industry</strong> reader — a planner at a city gas distribution
+        company, or someone scoping infrastructure investment — can ignore the
+        mathematics entirely and work from cost breakdowns, utilization figures, and
+        plain-language recommendations. Neither reading requires touching the other.
+      </p>
+      <h3>What's actually running underneath</h3>
+      <p>
+        This is not a static mock-up or a slide deck pretending to be a tool. Every
+        number shown anywhere in the app — cost, utilization, resilience score,
+        recommendation — comes from solving a real Mixed-Integer Linear Program against
+        whatever network you've built, using the <a href="https://highs.dev" target="_blank">HiGHS</a>
+        open-source solver via <a href="https://www.pyomo.org" target="_blank">Pyomo</a>.
+        Nothing is hard-coded to the demo network sizes; the same code path handles a
+        3-source network and a 50-source network identically.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= THE GAP ================= -->
+  <section class="lp-section" id="lp-gap">
+    <div class="lp-body">
+      <h3>The gap this project addresses</h3>
+      <p>
+        Classic facility-location and supply-chain network design models — the
+        textbook p-median or capacitated facility location problem — optimize for cost
+        under the standing assumption that supply is reliably available whenever a
+        facility calls for it. That assumption fits manufacturing and retail logistics
+        reasonably well. It does not fit gas distribution in a country where domestic
+        production is politically allocated (APM cuts), LNG import prices spike with
+        global markets, and winter heating demand competes directly with transport CNG
+        demand for the same pipeline capacity.
+      </p>
+      <p>
+        Most published CNG/CGD network studies either (a) treat capacity as fixed and
+        optimize location and flow under certainty, or (b) model scarcity qualitatively,
+        as a narrative risk section, without folding it into the optimization itself.
+        Few make scarcity <em>the organizing variable</em> of the model — where the
+        facility-location decision and the rationing policy are solved jointly, and
+        where "who loses service first" is a designed output of a priority-weighted
+        objective rather than an afterthought.
+      </p>
+      <h3>The working assumption behind that gap</h3>
+      <p>
+        The core assumption motivating this project: <strong>a network designed to be
+        cost-optimal under 100% supply availability is not the same network that is
+        cost-optimal — or even feasible — under realistic scarcity.</strong> A network
+        sized and routed assuming full supply may have no redundancy to fall back on
+        when a single source or corridor underperforms, while a network with deliberate
+        slack costs more in the common case to survive the uncommon one. The right
+        answer is neither extreme, and finding it requires solving the scarcity case
+        explicitly rather than bolting a safety margin onto a certainty-case answer
+        after the fact.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= ASSUMPTIONS ================= -->
+  <section class="lp-section" id="lp-assumptions">
+    <div class="lp-body">
+      <h3>Modeling assumptions</h3>
+      <p>Every assumption below is a deliberate simplification, stated so it can be
+      argued with rather than discovered by surprise.</p>
+      <ul>
+        <li><strong>Static per-period demand within a solve.</strong> A single
+        deterministic or scenario solve treats demand as a fixed number for that
+        period; growth across periods is handled by the separate time-series
+        simulation, not inside one MILP solve.</li>
+        <li><strong>Linear costs, no economies of scale.</strong> Transport and supply
+        costs are linear in flow — there's no volume discount or congestion penalty
+        modeled on any arc.</li>
+        <li><strong>CGS→station flow has no arc-level capacity or explicit cost
+        entity.</strong> Only facility (node) capacities constrain that hop; its cost
+        is distance-based (haversine) or a flat default, not a user-entered transport
+        contract.</li>
+        <li><strong>Priority-weighted shortage penalty, not a hard allocation
+        rule.</strong> Service priority is enforced by (a) a per-zone minimum service
+        level constraint and (b) a penalty weight on unmet demand in the objective —
+        the model chooses where to let shortage fall based on cost trade-offs within
+        those bounds, it does not follow a fixed waterfall.</li>
+        <li><strong>Two-stage stochastic assumes fixed topology across
+        scenarios.</strong> Facility open/close decisions are shared "here-and-now"
+        variables; only flows, costs, and availability vary by scenario. A scenario
+        cannot introduce a facility that doesn't exist in the base network.</li>
+        <li><strong>Virtual pipeline (M-D-O) is a labeled corridor, not a separate
+        mode-choice optimization.</strong> The platform lets you tag a corridor as
+        "virtual," but it does not yet independently decide pipeline vs. virtual
+        pipeline economics.</li>
+        <li><strong>No inventory carried between simulation periods.</strong> The
+        multi-period timeline is a sequence of independent solves with compounding
+        demand growth, not a single formulation with a storage/inventory balance
+        variable across time.</li>
+      </ul>
+      <p>The full, code-linked version of this list — including the exact constraint
+      each assumption maps to — is in <code>MODEL_DOCUMENTATION.md</code> in the
+      project repository.</p>
+    </div>
+  </section>
+
+  <!-- ================= CASE STUDIES ================= -->
+  <section class="lp-section" id="lp-case-studies">
+    <div class="lp-body">
+      <h3>Two illustrative networks, both clearly labeled as illustrative</h3>
+      <p>
+        Neither dataset below is real GAIL, IGL, MGL, or PPAC data. Both are stored with
+        every value flagged <code>status="Illustrative"</code> in the platform's own
+        assumption ledger, and both are meant to be deleted and replaced with real data
+        before anyone makes a decision based on them. They exist to demonstrate the
+        platform's behavior across a small case and a deliberately larger, more
+        heterogeneous one.
+      </p>
+    </div>
+
+    <div class="cs-card">
+      <h4>Case Study 1 — Simple: North-West Corridor Network</h4>
+      <div class="cs-stats">
+        <span class="cs-stat">3 sources</span>
+        <span class="cs-stat">3 CGS</span>
+        <span class="cs-stat">5 stations</span>
+        <span class="cs-stat">7 demand zones</span>
+        <span class="cs-stat">4 scenarios</span>
+      </div>
+      <p style="font-size:14px;color:var(--text-secondary);">
+        A compact network spanning Delhi/NCR and Mumbai. Every facility is either fully
+        existing or has one candidate alternative, so the effect of facility-opening
+        decisions is easy to trace by hand. Good first stop for understanding the model
+        before scaling up.
+      </p>
+      <a href="/projects?autoload=simple" class="btn primary small">Launch this case study →</a>
+    </div>
+
+    <div class="cs-card">
+      <h4>Case Study 2 — Advanced: Pan-India Multi-Corridor Network</h4>
+      <div class="cs-stats">
+        <span class="cs-stat">5 sources (all 3 source types)</span>
+        <span class="cs-stat">5 CGS (existing + candidate)</span>
+        <span class="cs-stat">9 stations</span>
+        <span class="cs-stat">9 demand zones (all 6 demand types)</span>
+        <span class="cs-stat">5 scenarios</span>
+        <span class="cs-stat">pipeline + virtual corridors</span>
+      </div>
+      <p style="font-size:14px;color:var(--text-secondary);">
+        A wider network spanning Delhi, Mumbai, Bengaluru, Chennai, Kolkata, Nagpur, and
+        Guwahati, deliberately built to exercise every entity type the schema supports —
+        domestic fields, LNG terminals, and a biogas-blending source; both pipeline and
+        virtual/M-D-O corridors; a mix of existing and candidate infrastructure; and all
+        five priority classes. Its fifth scenario, <em>Regional Pipeline Outage</em>,
+        directly disables a specific corridor and a specific candidate station rather
+        than just scaling availability — which, in this network, knocks out the only
+        station serving Nagpur entirely. Solving that scenario correctly returns
+        <strong>infeasible</strong>, and the platform's diagnostics correctly explain
+        why (a disconnected demand zone) — a deliberate demonstration of single-point-of-failure
+        detection, not a bug.
+      </p>
+      <a href="/projects?autoload=advanced" class="btn primary small">Launch this case study →</a>
+    </div>
+  </section>
+
+  <!-- ================= OBJECTIVES ================= -->
+  <section class="lp-section" id="lp-objectives">
+    <div class="lp-body">
+      <h3>Project objectives</h3>
+      <ol>
+        <li>Formulate CNG network design as a capacitated facility-location MILP that
+        is generic over network size — no part of the optimization logic references a
+        specific count of sources, corridors, CGS, stations, or demand zones.</li>
+        <li>Incorporate scarcity as a first-class modeling dimension, not an
+        afterthought: source availability factors, scenario-based and two-stage
+        stochastic formulations, and a configurable robust mode.</li>
+        <li>Encode service priority explicitly, so that when supply falls short, which
+        demand goes unmet is a transparent, priority-weighted output of the model
+        rather than an implicit side effect.</li>
+        <li>Make infeasibility explainable. When a scenario cannot be served, the system
+        should say why — insufficient aggregate supply, a disconnected demand zone, an
+        unreachable minimum service level — instead of returning a bare solver failure.</li>
+        <li>Quantify resilience with a transparent, decomposable score rather than a
+        single opaque number, so a user can see which lever (diversification, slack,
+        redundancy, continuity) is actually driving the result.</li>
+        <li>Present the same underlying results in two registers: a technical,
+        formulation-level view for research/coursework use, and a plain-language,
+        cost-and-risk view for operational decision-making.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================= CLAIMS ================= -->
+  <section class="lp-section" id="lp-claims">
+    <div class="lp-body">
+      <h3>What this platform claims — and what it doesn't</h3>
+      <h3 style="color:var(--ok);">Claims made</h3>
+      <ul>
+        <li>The optimization is a genuine solver run (HiGHS via Pyomo) against
+        whatever network the user configures — not a canned or interpolated result.</li>
+        <li>Facility counts, arc counts, and constraint counts scale with the actual
+        network size; a hand-computed known-optimal test case
+        (<code>tests/test_optimization.py::test_known_optimal_value</code>) is asserted
+        to match the solver's output exactly, as a correctness check.</li>
+        <li>The resilience score's components and weights are inspectable and
+        reconfigurable at request time — it is not a fixed, undocumented formula.</li>
+        <li>Every recommendation the platform surfaces is generated from a rule
+        evaluated against real solve output (utilization, concentration, unmet demand)
+        — never a templated or fabricated statement.</li>
+      </ul>
+      <h3 style="color:var(--warn);">Claims explicitly NOT made</h3>
+      <ul>
+        <li>This is not validated against real GAIL/IGL/MGL network data. Every number
+        in the demo networks is illustrative and labeled as such throughout the
+        interface, exports, and reports.</li>
+        <li>The two-stage stochastic and robust modes are working implementations of
+        standard formulations, not claims of novel optimization research.</li>
+        <li>Infeasibility diagnostics are a heuristic screen against the common causes,
+        not a formal IIS (irreducible infeasible subsystem) computation.</li>
+        <li>The platform does not claim production-scale performance guarantees at the
+        largest instance sizes described in its own design brief (e.g. 20 sources × 50
+        CGS × 100 stations × 100 demand zones) — see Notes on Results.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= INDUSTRY RELEVANCE ================= -->
+  <section class="lp-section" id="lp-industry">
+    <div class="lp-body">
+      <h3>Why this matters to a City Gas Distribution operator</h3>
+      <p>
+        India's CGD sector operates under the Administered Price Mechanism, where
+        domestic gas allocation to CNG/PNG can be curtailed to prioritize other sectors
+        during shortfalls, and where LNG spot-price volatility directly affects the
+        economics of make-up supply. A network built purely for lowest cost under
+        normal supply can find itself either paying an emergency premium for spot LNG
+        during a shortfall, or — worse — simply unable to serve committed public
+        transport contracts, which typically carry regulatory and reputational
+        consequences beyond the immediate lost revenue.
+      </p>
+      <h3>Concrete decisions this platform is built to support</h3>
+      <ul>
+        <li><strong>Where to add infrastructure.</strong> The Analyze tab's
+        recommendation engine flags CGS/stations running near capacity under stress
+        scenarios — candidates for expansion — using real utilization figures, not a
+        rule of thumb.</li>
+        <li><strong>How much redundancy is worth paying for.</strong> The
+        cost-vs-service-level Pareto frontier makes the trade-off explicit: what does
+        each additional percentage point of guaranteed service level actually cost, and
+        where does the curve bend.</li>
+        <li><strong>Which supply contracts create concentration risk.</strong> The
+        resilience score's supply-diversification component and the recommendation
+        engine's source-concentration check both surface over-reliance on a single
+        source.</li>
+        <li><strong>What a specific shock would do to the network today.</strong> The
+        one-click scenario presets (20/40/60% shortage, demand surge, pipeline failure,
+        combined crisis) give a before/after comparison in seconds, without needing to
+        hand-build a scenario.</li>
+      </ul>
+      <h3>Positioning relative to existing tools</h3>
+      <p>
+        This is closer to an operations-research decision-support prototype than to a
+        SCADA/telemetry system or a GIS asset register — it doesn't ingest live
+        operational data or control physical infrastructure. It sits upstream of those
+        systems, in the planning and investment-justification stage, where the question
+        is "what should the network look like," not "what is the network doing right now."
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= FRAMEWORK ================= -->
+  <section class="lp-section" id="lp-framework">
+    <div class="lp-body">
+      <h3>Network topology</h3>
+      <p>Four echelons. Nothing about entity counts is fixed — the diagram below
+      describes the <em>shape</em> of the flow, not any particular network's size.</p>
+    </div>
+
+    <svg viewBox="0 0 900 260" style="width:100%;height:auto;margin:14px 0 24px;" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a9aac"/>
+        </marker>
+      </defs>
+      <!-- column labels -->
+      <text x="80" y="24" font-family="IBM Plex Mono" font-size="12" fill="#51687e" text-anchor="middle">SOURCES (S)</text>
+      <text x="320" y="24" font-family="IBM Plex Mono" font-size="12" fill="#51687e" text-anchor="middle">CGS (J)</text>
+      <text x="560" y="24" font-family="IBM Plex Mono" font-size="12" fill="#51687e" text-anchor="middle">STATIONS (K)</text>
+      <text x="810" y="24" font-family="IBM Plex Mono" font-size="12" fill="#51687e" text-anchor="middle">DEMAND ZONES (D)</text>
+
+      <!-- source nodes -->
+      <circle cx="80" cy="80" r="16" fill="#0f8fae"/>
+      <circle cx="80" cy="130" r="16" fill="#0f8fae"/>
+      <circle cx="80" cy="180" r="16" fill="#0f8fae"/>
+      <!-- cgs nodes -->
+      <circle cx="320" cy="100" r="16" fill="#b9740f"/>
+      <circle cx="320" cy="160" r="16" fill="#b9740f"/>
+      <!-- station nodes -->
+      <circle cx="560" cy="70" r="14" fill="#1a9d5c"/>
+      <circle cx="560" cy="120" r="14" fill="#1a9d5c"/>
+      <circle cx="560" cy="170" r="14" fill="#1a9d5c"/>
+      <circle cx="560" cy="210" r="14" fill="#1a9d5c" stroke="#1a9d5c" stroke-dasharray="3,2" fill-opacity="0.5"/>
+      <!-- demand nodes -->
+      <circle cx="810" cy="70" r="14" fill="#7a6fd1"/>
+      <circle cx="810" cy="120" r="14" fill="#7a6fd1"/>
+      <circle cx="810" cy="170" r="14" fill="#7a6fd1"/>
+      <circle cx="810" cy="210" r="14" fill="#7a6fd1"/>
+
+      <!-- SJ arcs -->
+      <g stroke="#c3ccd6" stroke-width="1.4" marker-end="url(#arrow)">
+        <line x1="96" y1="80" x2="304" y2="102"/>
+        <line x1="96" y1="130" x2="304" y2="120"/>
+        <line x1="96" y1="130" x2="304" y2="158"/>
+        <line x1="96" y1="180" x2="304" y2="162"/>
+      </g>
+      <!-- JK arcs (dense) -->
+      <g stroke="#dfe5eb" stroke-width="1" marker-end="url(#arrow)">
+        <line x1="336" y1="100" x2="546" y2="70"/>
+        <line x1="336" y1="100" x2="546" y2="120"/>
+        <line x1="336" y1="100" x2="546" y2="170"/>
+        <line x1="336" y1="160" x2="546" y2="120"/>
+        <line x1="336" y1="160" x2="546" y2="170"/>
+        <line x1="336" y1="160" x2="546" y2="210" stroke-dasharray="3,2"/>
+      </g>
+      <!-- KD arcs (radius-gated) -->
+      <g stroke="#c3ccd6" stroke-width="1.4" marker-end="url(#arrow)">
+        <line x1="574" y1="70" x2="796" y2="70"/>
+        <line x1="574" y1="120" x2="796" y2="120"/>
+        <line x1="574" y1="170" x2="796" y2="170"/>
+        <line x1="574" y1="170" x2="796" y2="210"/>
+      </g>
+
+      <text x="200" y="230" font-family="IBM Plex Mono" font-size="10.5" fill="#8a9aac" text-anchor="middle">SJ: explicit corridors</text>
+      <text x="440" y="230" font-family="IBM Plex Mono" font-size="10.5" fill="#8a9aac" text-anchor="middle">JK: dense, node-capacity only</text>
+      <text x="685" y="230" font-family="IBM Plex Mono" font-size="10.5" fill="#8a9aac" text-anchor="middle">KD: gated by service radius</text>
+      <text x="560" y="248" font-family="IBM Plex Mono" font-size="10" fill="#8a9aac" text-anchor="middle">dashed = candidate infrastructure</text>
+    </svg>
+
+    <div class="lp-body">
+      <h3>Decision variables</h3>
+      <ul>
+        <li><code>y_j ∈ {0,1}</code> — 1 if CGS j is open (fixed to 1 if existing)</li>
+        <li><code>z_k ∈ {0,1}</code> — 1 if station k is open (fixed to 1 if existing)</li>
+        <li><code>x_sj, w_jk, v_kd ≥ 0</code> — flow on each arc</li>
+        <li><code>u_d ≥ 0</code> — unmet demand at zone d</li>
+      </ul>
+      <h3>Objective</h3>
+    </div>
+    <div class="formula-block">
+minimize &nbsp; Σⱼ FixedCost_j · y_j  &nbsp;<span class="comment">// CGS fixed cost</span>
+        + Σₖ FixedCost_k · z_k  &nbsp;<span class="comment">// station fixed cost</span>
+        + Σ₍ₛ,ⱼ₎ SupplyCost_s · x_sj  &nbsp;<span class="comment">// gas procurement</span>
+        + Σ₍ₛ,ⱼ₎ TransportCost_sj · x_sj  &nbsp;<span class="comment">// source→CGS transport</span>
+        + Σ₍ⱼ,ₖ₎ DistanceCost_jk · w_jk  &nbsp;<span class="comment">// CGS→station transport</span>
+        + Σ₍ₖ,d₎ DistanceCost_kd · v_kd  &nbsp;<span class="comment">// station→demand distribution</span>
+        + Σ_d PenaltyBase · PriorityWeight_d · u_d  &nbsp;<span class="comment">// priority-weighted shortage</span>
+    </div>
+
+    <div class="lp-body">
+      <h3>Core constraints</h3>
+      <ul>
+        <li>Source capacity: Σⱼ x_sj ≤ availability_s · max_capacity_s</li>
+        <li>Corridor capacity: x_sj ≤ capacity_sj</li>
+        <li>Flow balance at every CGS and station: inbound = outbound</li>
+        <li>Facility capacity: inbound flow ≤ capacity · (y_j or z_k)</li>
+        <li>Demand balance: delivered + unmet = demand_d</li>
+        <li>Service level: u_d ≤ (1 − min_service_level_d) · demand_d</li>
+      </ul>
+
+      <h3>Technical architecture</h3>
+      <div class="pill-row">
+        <span class="pill">Flask</span>
+        <span class="pill">Pyomo</span>
+        <span class="pill">HiGHS solver</span>
+        <span class="pill">NetworkX</span>
+        <span class="pill">JSON file storage (no database)</span>
+        <span class="pill">Leaflet.js</span>
+        <span class="pill">Chart.js</span>
+        <span class="pill">Vanilla JS</span>
+        <span class="pill">Pyomo appsi</span>
+        <span class="pill">openpyxl / reportlab (export)</span>
+      </div>
+      <p>
+        The solver layer (<code>app/optimization/solver_registry.py</code>) detects
+        whatever's available at runtime in preference order HiGHS → CBC → Gurobi →
+        CPLEX, open-source first; no commercial solver is required to run this
+        platform. Storage is a small repository layer over plain JSON files
+        (<code>app/data/repo.py</code>) rather than a SQL database — every project is
+        one file, every optimization run appends one line to a log, and there is no
+        ORM or migration system in the stack.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= NOTES ON RESULTS ================= -->
+  <section class="lp-section" id="lp-notes">
+    <div class="lp-body">
+      <h3>How to read any result this platform produces</h3>
+      <p>
+        Every cost, utilization figure, and recommendation is real solver output against
+        the network as configured at the moment you ran it — but "real" does not mean
+        "validated against actual industry data." Read every number through two filters
+        before acting on it:
+      </p>
+      <ol>
+        <li><strong>Is the underlying data illustrative or real?</strong> Check the
+        project's <code>is_demo</code> flag and the per-value assumption ledger. Demo
+        network numbers are placeholders for exploring the tool, not benchmarks.</li>
+        <li><strong>Which modeling simplification does this result brush up
+        against?</strong> See the Assumptions tab. A recommendation to expand a CGS, for
+        instance, is only as good as the fixed/linear cost assumption behind the
+        expansion-cost figure it's computed from.</li>
+      </ol>
+      <h3>Known limitations, stated plainly</h3>
+      <ul>
+        <li>No inter-period inventory/storage state — the time-series simulation is a
+        sequence of independent solves, not one multi-period MILP.</li>
+        <li>CGS→station arcs have no explicit corridor entity or arc-level capacity.</li>
+        <li>Virtual pipeline / M-D-O mode choice is a label, not an independent
+        optimization decision between pipeline and virtual-pipeline economics.</li>
+        <li>No direct budget-constrained investment mode ("minimum investment for 95%
+        service") — approximate it via the Pareto frontier instead.</li>
+        <li>Analytics (Pareto, tornado, resilience, dashboard summary) re-solve the
+        model multiple times per request rather than caching — fine at demo scale,
+        untested at the large-instance target described in the platform's own design
+        brief (20 sources × 50 CGS × 100 stations × 100 demand zones).</li>
+        <li>Infeasibility diagnostics are a heuristic screen against common causes, not
+        a formal IIS/conflict-refiner computation.</li>
+      </ul>
+      <h3>What has and hasn't been verified</h3>
+      <p>
+        <strong>Verified:</strong> 27 automated tests cover CRUD/validation correctness,
+        a hand-computed known-optimal MILP case matched exactly, infeasibility
+        diagnostics against genuinely infeasible instances, stochastic and robust
+        solving, and several analytics invariants (Pareto monotonicity, tornado sort
+        order). Both demo networks solve correctly end to end, including the advanced
+        network's deliberately infeasible outage scenario being correctly diagnosed
+        rather than silently mishandled.
+      </p>
+      <p>
+        <strong>Not verified:</strong> performance and correctness at large instance
+        sizes; behavior with pathological inputs (extremely tight service levels
+        combined with disconnected sub-networks, for instance, has only been spot-checked,
+        not systematically fuzzed); and — the most important caveat — none of this has
+        been checked against real-world CGD network data, because none was used to
+        build it.
+      </p>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('#lpTabs .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#lpTabs .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lp-section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('lp-' + tab.dataset.lp).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+</script>
+{% endblock %}
