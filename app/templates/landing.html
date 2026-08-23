@@ -8,14 +8,25 @@
   .lp-hero { padding: 28px 0 8px; }
   .lp-hero h1 { font-size: 30px; line-height: 1.25; max-width: 780px; }
   .lp-hero p.lead { font-size: 16.5px; color: var(--text-secondary); max-width: 720px; }
-  .lp-body p { font-size: 15px; color: var(--text-secondary); line-height: 1.7; }
+  .lp-body p { font-size: 15px; color: var(--text-secondary); line-height: 1.75; text-align: justify; text-justify: inter-word; }
   .lp-body h3 { font-size: 17px; margin-top: 26px; }
-  .lp-body ul, .lp-body ol { font-size: 15px; color: var(--text-secondary); line-height: 1.8; padding-left: 22px; }
+  .lp-body ul, .lp-body ol { font-size: 15px; color: var(--text-secondary); line-height: 1.8; padding-left: 22px; text-align: left; }
   .lp-body li { margin-bottom: 6px; }
   .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
   .pill { font-family: var(--font-mono); font-size: 12px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-alt); color: var(--text-secondary); }
-  .formula-block { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; font-family: var(--font-mono); font-size: 13.5px; line-height: 2; color: var(--text-primary); overflow-x: auto; }
-  .formula-block .comment { color: var(--text-muted); }
+  .formula-block { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; font-family: var(--font-mono); font-size: 13.5px; color: var(--text-primary); overflow-x: auto; }
+  .formula-row { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 5px 0; border-bottom: 1px dashed var(--border-soft); }
+  .formula-row:last-child { border-bottom: none; }
+  .formula-row .term { white-space: nowrap; }
+  .formula-row .note { color: var(--text-muted); font-size: 12px; font-family: var(--font-ui); font-style: italic; text-align: right; }
+  .formula-block sub { font-size: 0.72em; }
+  .constraint-list { font-family: var(--font-mono); font-size: 13.5px; }
+  .constraint-list li { margin-bottom: 10px; }
+  .sdg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin: 14px 0 6px; }
+  .sdg-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; background: var(--surface-raised); }
+  .sdg-card .sdg-num { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em; }
+  .sdg-card h5 { margin: 4px 0 6px 0; font-size: 14px; }
+  .sdg-card p { font-size: 12.5px; margin: 0; text-align: left; }
   .cs-card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 18px; }
   .cs-card h4 { margin: 0 0 6px 0; font-size: 16px; }
   .cs-stats { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
@@ -24,16 +35,16 @@
 {% endblock %}
 {% block content %}
 
-<div class="tabs" id="lpTabs" style="max-width:980px;margin:0 auto;padding:0 28px;margin-top:8px;">
-  <div class="tab active" data-lp="overview">Overview</div>
-  <div class="tab" data-lp="gap">The Gap</div>
-  <div class="tab" data-lp="assumptions">Assumptions</div>
-  <div class="tab" data-lp="case-studies">Case Studies</div>
-  <div class="tab" data-lp="objectives">Objectives</div>
-  <div class="tab" data-lp="claims">Claims</div>
-  <div class="tab" data-lp="industry">Industry Relevance</div>
-  <div class="tab" data-lp="framework">Framework</div>
-  <div class="tab" data-lp="notes">Notes on Results</div>
+<div class="stepper" id="lpTabs">
+  <div class="step active" data-lp="overview" title="What the platform does and who it's for"><span class="num">1</span> Overview</div>
+  <div class="step" data-lp="gap" title="The research/practice gap this fills"><span class="num">2</span> The Gap</div>
+  <div class="step" data-lp="assumptions" title="Every modeling simplification, stated plainly"><span class="num">3</span> Assumptions</div>
+  <div class="step" data-lp="case-studies" title="Two runnable illustrative networks"><span class="num">4</span> Case Studies</div>
+  <div class="step" data-lp="objectives" title="Project goals and SDG alignment"><span class="num">5</span> Objectives</div>
+  <div class="step" data-lp="claims" title="What is and isn't claimed"><span class="num">6</span> Claims</div>
+  <div class="step" data-lp="industry" title="Relevance to City Gas Distribution operators"><span class="num">7</span> Industry Relevance</div>
+  <div class="step" data-lp="framework" title="Topology, formulation, solver, tech stack"><span class="num">8</span> Framework</div>
+  <div class="step" data-lp="notes" title="Verified vs. not verified, limitations"><span class="num">9</span> Notes on Results</div>
 </div>
 
 <div class="lp-shell">
@@ -54,7 +65,7 @@
         <span class="pill">Scarcity &amp; Resilience Analysis</span>
       </div>
       <div style="margin-top:22px;">
-        <a href="/projects" class="btn primary">Open the Projects App →</a>
+        <a href="/projects" class="btn primary">Open CNG Network Design &amp; Scarcity Platform</a>
       </div>
     </div>
 
@@ -67,6 +78,16 @@
         allocation strategy minimizes total cost while maintaining acceptable service
         levels, under both normal and scarcity conditions?</strong>
       </p>
+
+      <h3>The model, in one line</h3>
+      <p>The full formulation lives on the Framework tab; the shape of it is this —</p>
+      <div class="formula-block" style="margin-bottom:18px;">
+        <div class="formula-row">
+          <span class="term">minimize &nbsp; Infrastructure + Supply + Transport + Priority-weighted Shortage</span>
+          <span class="note">subject to capacity, flow-balance &amp; service-level constraints</span>
+        </div>
+      </div>
+
       <h3>Who this is for</h3>
       <p>
         The platform is built to be read two ways at once. An <strong>academic</strong>
@@ -83,9 +104,20 @@
         number shown anywhere in the app — cost, utilization, resilience score,
         recommendation — comes from solving a real Mixed-Integer Linear Program against
         whatever network you've built, using the <a href="https://highs.dev" target="_blank">HiGHS</a>
-        open-source solver via <a href="https://www.pyomo.org" target="_blank">Pyomo</a>.
+        open-source solver via <a href="https://www.pyomo.org" target="_blank">Pyomo</a>,
+        with CBC, Gurobi, and CPLEX supported as pluggable alternatives (see Framework).
         Nothing is hard-coded to the demo network sizes; the same code path handles a
         3-source network and a 50-source network identically.
+      </p>
+      <h3>How to use this page</h3>
+      <p>
+        The nine sections above form a short, linear argument: what the problem is, why
+        existing approaches leave a gap, what this platform assumes, two runnable
+        examples, what it set out to achieve, what it does and doesn't claim, why it
+        matters commercially, exactly how it's built, and — last — an honest account of
+        what has and hasn't been checked. Read it in order once, then jump around as
+        needed. The Projects button in the top bar is available from every section, and
+        every section links back here the same way.
       </p>
     </div>
   </section>
@@ -113,6 +145,24 @@
         where "who loses service first" is a designed output of a priority-weighted
         objective rather than an afterthought.
       </p>
+      <h3>Three specific shortfalls in existing practice</h3>
+      <p>
+        First, <strong>facility location and rationing policy are usually solved
+        sequentially, not jointly</strong> — a network is designed for average or
+        peak-certain demand, and a curtailment policy is layered on afterward as an
+        operational rule rather than a variable the design itself accounts for. Second,
+        <strong>service priority is rarely made quantitative.</strong> Regulatory and
+        commercial guidance on who should be served first during a shortfall — public
+        transport before private vehicles, for instance — usually exists as policy
+        language, not as a weighted term inside an optimization that can trade it off
+        against cost explicitly. Third, <strong>infeasibility is treated as a modeling
+        failure to avoid, not a planning signal to interpret.</strong> A network design
+        study that returns "no feasible solution" under a stress scenario has actually
+        told the planner something important — that the current infrastructure cannot
+        meet its minimum service commitments under that shock — but most tooling either
+        prevents that outcome by construction (soft-capping everything) or reports it as
+        an error rather than a diagnosis.
+      </p>
       <h3>The working assumption behind that gap</h3>
       <p>
         The core assumption motivating this project: <strong>a network designed to be
@@ -123,7 +173,9 @@
         slack costs more in the common case to survive the uncommon one. The right
         answer is neither extreme, and finding it requires solving the scarcity case
         explicitly rather than bolting a safety margin onto a certainty-case answer
-        after the fact.
+        after the fact. This is why the platform treats deterministic, scenario-based,
+        two-stage stochastic, and robust optimization as four different lenses on the
+        same underlying network — not four unrelated features.
       </p>
     </div>
   </section>
@@ -253,6 +305,53 @@
         formulation-level view for research/coursework use, and a plain-language,
         cost-and-risk view for operational decision-making.</li>
       </ol>
+
+      <h3>Alignment with the UN Sustainable Development Goals</h3>
+      <p>
+        These objectives were not chosen to satisfy an SDG checklist after the fact —
+        but the connection is direct enough to state explicitly, since it's part of why
+        CNG network resilience is a policy-relevant problem and not only a cost problem.
+      </p>
+      <div class="sdg-grid">
+        <div class="sdg-card">
+          <div class="sdg-num">SDG 7</div>
+          <h5>Affordable and Clean Energy</h5>
+          <p>CNG is a lower-emission bridge fuel relative to diesel/petrol for transport
+          and industrial use. A network that keeps supply <em>reliable</em>, not just
+          cheap, is a precondition for CNG remaining a credible substitute rather than a
+          fuel people fall back off during shortages.</p>
+        </div>
+        <div class="sdg-card">
+          <div class="sdg-num">SDG 9</div>
+          <h5>Industry, Innovation &amp; Infrastructure</h5>
+          <p>The core contribution is an infrastructure-investment decision tool — where
+          to add CGS or station capacity, and how much redundancy is worth paying for —
+          aimed directly at building resilient distribution infrastructure.</p>
+        </div>
+        <div class="sdg-card">
+          <div class="sdg-num">SDG 11</div>
+          <h5>Sustainable Cities &amp; Communities</h5>
+          <p>The priority-class mechanism is built to protect public transport service
+          levels first during shortages — the segment with the largest per-unit impact
+          on urban air quality and commuter access.</p>
+        </div>
+        <div class="sdg-card">
+          <div class="sdg-num">SDG 12</div>
+          <h5>Responsible Consumption &amp; Production</h5>
+          <p>Modeling scarcity explicitly, rather than over-provisioning "just in case,"
+          is itself a resource-efficiency argument — the platform's Pareto-frontier
+          analysis quantifies exactly how much slack a given service-level target
+          actually requires, rather than defaulting to worst-case overbuild.</p>
+        </div>
+        <div class="sdg-card">
+          <div class="sdg-num">SDG 13</div>
+          <h5>Climate Action</h5>
+          <p>Every unit of CNG demand that goes unmet during a shortage is demand that
+          may shift back to a higher-emission substitute fuel in the near term. Keeping
+          the network resilient under scarcity is, indirectly, an emissions-stability
+          argument as much as a service-continuity one.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -405,52 +504,96 @@
     <div class="lp-body">
       <h3>Decision variables</h3>
       <ul>
-        <li><code>y_j ∈ {0,1}</code> — 1 if CGS j is open (fixed to 1 if existing)</li>
-        <li><code>z_k ∈ {0,1}</code> — 1 if station k is open (fixed to 1 if existing)</li>
-        <li><code>x_sj, w_jk, v_kd ≥ 0</code> — flow on each arc</li>
-        <li><code>u_d ≥ 0</code> — unmet demand at zone d</li>
+        <li><code>y<sub>j</sub> ∈ {0,1}</code> — 1 if CGS j is open (fixed to 1 if existing)</li>
+        <li><code>z<sub>k</sub> ∈ {0,1}</code> — 1 if station k is open (fixed to 1 if existing)</li>
+        <li><code>x<sub>sj</sub>, w<sub>jk</sub>, v<sub>kd</sub> ≥ 0</code> — flow on each arc</li>
+        <li><code>u<sub>d</sub> ≥ 0</code> — unmet demand at zone d</li>
       </ul>
       <h3>Objective</h3>
+      <p>Minimize the sum of six cost components below, subject to the constraints
+      that follow. Every subscript names the set it ranges over — <code>j ∈ J</code>
+      (CGS), <code>k ∈ K</code> (stations), <code>d ∈ D</code> (demand zones), and
+      <code>(s,j)</code>, <code>(j,k)</code>, <code>(k,d)</code> for arcs between them.</p>
     </div>
     <div class="formula-block">
-minimize &nbsp; Σⱼ FixedCost_j · y_j  &nbsp;<span class="comment">// CGS fixed cost</span>
-        + Σₖ FixedCost_k · z_k  &nbsp;<span class="comment">// station fixed cost</span>
-        + Σ₍ₛ,ⱼ₎ SupplyCost_s · x_sj  &nbsp;<span class="comment">// gas procurement</span>
-        + Σ₍ₛ,ⱼ₎ TransportCost_sj · x_sj  &nbsp;<span class="comment">// source→CGS transport</span>
-        + Σ₍ⱼ,ₖ₎ DistanceCost_jk · w_jk  &nbsp;<span class="comment">// CGS→station transport</span>
-        + Σ₍ₖ,d₎ DistanceCost_kd · v_kd  &nbsp;<span class="comment">// station→demand distribution</span>
-        + Σ_d PenaltyBase · PriorityWeight_d · u_d  &nbsp;<span class="comment">// priority-weighted shortage</span>
+      <div class="formula-row">
+        <span class="term">minimize &nbsp; Σ<sub>j∈J</sub> FixedCost<sub>j</sub> · y<sub>j</sub></span>
+        <span class="note">CGS fixed operating cost</span>
+      </div>
+      <div class="formula-row">
+        <span class="term">+ &nbsp; Σ<sub>k∈K</sub> FixedCost<sub>k</sub> · z<sub>k</sub></span>
+        <span class="note">station fixed cost</span>
+      </div>
+      <div class="formula-row">
+        <span class="term">+ &nbsp; Σ<sub>(s,j)</sub> SupplyCost<sub>s</sub> · x<sub>sj</sub></span>
+        <span class="note">gas procurement cost</span>
+      </div>
+      <div class="formula-row">
+        <span class="term">+ &nbsp; Σ<sub>(s,j)</sub> TransportCost<sub>sj</sub> · x<sub>sj</sub></span>
+        <span class="note">source → CGS transport</span>
+      </div>
+      <div class="formula-row">
+        <span class="term">+ &nbsp; Σ<sub>(j,k)</sub> DistanceCost<sub>jk</sub> · w<sub>jk</sub></span>
+        <span class="note">CGS → station transport</span>
+      </div>
+      <div class="formula-row">
+        <span class="term">+ &nbsp; Σ<sub>(k,d)</sub> DistanceCost<sub>kd</sub> · v<sub>kd</sub></span>
+        <span class="note">station → demand distribution</span>
+      </div>
+      <div class="formula-row">
+        <span class="term">+ &nbsp; Σ<sub>d∈D</sub> PenaltyBase · PriorityWeight<sub>d</sub> · u<sub>d</sub></span>
+        <span class="note">priority-weighted shortage penalty</span>
+      </div>
     </div>
 
     <div class="lp-body">
       <h3>Core constraints</h3>
-      <ul>
-        <li>Source capacity: Σⱼ x_sj ≤ availability_s · max_capacity_s</li>
-        <li>Corridor capacity: x_sj ≤ capacity_sj</li>
-        <li>Flow balance at every CGS and station: inbound = outbound</li>
-        <li>Facility capacity: inbound flow ≤ capacity · (y_j or z_k)</li>
-        <li>Demand balance: delivered + unmet = demand_d</li>
-        <li>Service level: u_d ≤ (1 − min_service_level_d) · demand_d</li>
+      <ul class="constraint-list">
+        <li><strong>Source capacity</strong> &nbsp; Σ<sub>j</sub> x<sub>sj</sub> ≤ Availability<sub>s</sub> · MaxCapacity<sub>s</sub></li>
+        <li><strong>Corridor capacity</strong> &nbsp; x<sub>sj</sub> ≤ Capacity<sub>sj</sub></li>
+        <li><strong>Flow balance</strong> &nbsp; at every CGS and station: inbound = outbound</li>
+        <li><strong>Facility capacity</strong> &nbsp; inbound flow ≤ Capacity · (y<sub>j</sub> or z<sub>k</sub>)</li>
+        <li><strong>Demand balance</strong> &nbsp; v<sub>kd</sub> (delivered) + u<sub>d</sub> (unmet) = Demand<sub>d</sub></li>
+        <li><strong>Service level</strong> &nbsp; u<sub>d</sub> ≤ (1 − MinServiceLevel<sub>d</sub>) · Demand<sub>d</sub></li>
       </ul>
+
+      <h3>Solvers</h3>
+      <p>
+        The optimization engine is written against Pyomo's solver-agnostic API, so the
+        formulation above is identical no matter which solver executes it. Four are
+        supported, checked in this preference order at runtime — open-source first, no
+        commercial solver required to run the platform:
+      </p>
+      <div class="pill-row">
+        <span class="pill">HiGHS — bundled, default</span>
+        <span class="pill">CBC — open-source, pluggable</span>
+        <span class="pill">Gurobi — commercial, pluggable</span>
+        <span class="pill">CPLEX — commercial, pluggable</span>
+      </div>
+      <p style="margin-top:10px;">
+        <code>app/optimization/solver_registry.py</code> detects whichever of these is
+        actually installed and licensed in the current environment and reports it as
+        "Active Solver" throughout the app. HiGHS ships with the platform via the
+        <code>highspy</code> package and needs no separate installation; CBC needs its
+        binary on <code>PATH</code>; Gurobi and CPLEX need a valid license file. Nothing
+        about the model formulation, the API, or the UI changes based on which one is
+        active — only solve speed and (for very large instances) numerical robustness do.
+      </p>
 
       <h3>Technical architecture</h3>
       <div class="pill-row">
         <span class="pill">Flask</span>
         <span class="pill">Pyomo</span>
-        <span class="pill">HiGHS solver</span>
+        <span class="pill">Pyomo appsi</span>
         <span class="pill">NetworkX</span>
         <span class="pill">JSON file storage (no database)</span>
         <span class="pill">Leaflet.js</span>
         <span class="pill">Chart.js</span>
         <span class="pill">Vanilla JS</span>
-        <span class="pill">Pyomo appsi</span>
         <span class="pill">openpyxl / reportlab (export)</span>
       </div>
       <p>
-        The solver layer (<code>app/optimization/solver_registry.py</code>) detects
-        whatever's available at runtime in preference order HiGHS → CBC → Gurobi →
-        CPLEX, open-source first; no commercial solver is required to run this
-        platform. Storage is a small repository layer over plain JSON files
+        Storage is a small repository layer over plain JSON files
         (<code>app/data/repo.py</code>) rather than a SQL database — every project is
         one file, every optimization run appends one line to a log, and there is no
         ORM or migration system in the stack.
@@ -519,12 +662,12 @@ minimize &nbsp; Σⱼ FixedCost_j · y_j  &nbsp;<span class="comment">// CGS fix
 
 {% block extra_scripts %}
 <script>
-document.querySelectorAll('#lpTabs .tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('#lpTabs .tab').forEach(t => t.classList.remove('active'));
+document.querySelectorAll('#lpTabs .step').forEach(step => {
+  step.addEventListener('click', () => {
+    document.querySelectorAll('#lpTabs .step').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.lp-section').forEach(s => s.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('lp-' + tab.dataset.lp).classList.add('active');
+    step.classList.add('active');
+    document.getElementById('lp-' + step.dataset.lp).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 });
