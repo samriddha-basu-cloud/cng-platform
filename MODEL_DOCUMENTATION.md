@@ -136,6 +136,35 @@ external install) → CBC → Gurobi → CPLEX. `app/optimization/solver_registr
 detects what's actually available at runtime; no commercial solver is
 required. See `/api/meta/solvers`.
 
+## 8b. Optional realism modules (all off by default, all user-driven)
+
+Seven switches on the Setup tab (`Project.enable_*`, all default `False`)
+turn on extra constraints/cost terms built from fields you set per entity
+on the Network tab. None of them supply a hidden value — flipping a switch
+only starts *enforcing* numbers already sitting in your network. With every
+switch off, the model is byte-for-byte the one described in sections 1-8.
+
+| Module | What it does | Reads from |
+|---|---|---|
+| Gas pressure model | Gates CGS→station and station→demand arcs: an arc only exists if delivered pressure (discharge/dispensing pressure minus `pressure_drop_rate_bar_per_km × distance`) still meets the receiving station's/zone's minimum. Purely a feasibility gate on `snapshot_network()` - no new decision variable. | `CGS.discharge_pressure_bar`, `CNGStation.min_inlet_pressure_bar` / `dispensing_pressure_bar`, `DemandZone.min_required_pressure_bar`, `Project.pressure_drop_rate_bar_per_km` |
+| Household silent hours | Caps `v[k,d]` at `station.capacity × (available_hours/24)` for a zone with a configured no-delivery window - the same daily volume has to fit into fewer hours, so it competes harder for the station's throughput. | `DemandZone.silent_hours_start/end` |
+| Take-or-pay penalty clauses | Adds `shortfall[s] >= contracted_quantity_s - offtake_s` (≥0) and `+ take_or_pay_penalty_rate_s × shortfall[s]` to the objective - a real contract term where under-lifting still costs money. | `Source.contracted_quantity`, `Source.take_or_pay_penalty_rate` |
+| Price / infrastructure escalation | In the Time-Series Simulation only (`app/simulation/timeline.py`): compounds `supply_cost × (1+rate)^t` and CGS/station fixed cost × `(1+rate)^t` per period. Does not touch the single-period objective. | `Source.price_escalation_pct`, `CGS`/`CNGStation.infrastructure_escalation_pct` |
+| Household travel-distance limit | Effective KD-arc radius becomes `min(station.demand_service_radius_km, zone.max_travel_distance_km)`. | `DemandZone.max_travel_distance_km` |
+| Logistics cost variation | Feeds the `logistics_cost_spike` scenario preset (uses the average `Corridor.cost_variation_pct` when solving `transport_cost_multiplier`) and sensitivity what-if runs. | `Corridor.cost_variation_pct` |
+| Industrial demand variability | Feeds the `industry_demand_variability` scenario preset, which scales only `demand_type="Industrial"` zones by their own `demand_variability_pct` (defaults to +15% if unset). | `DemandZone.demand_variability_pct` |
+
+Two more presets ride on the same fields without needing a toggle:
+`gail_upstream_interruption` (cuts availability only on sources flagged
+`Source.is_upstream_gail`, by each source's own `interruption_probability`)
+models a national-grid-style upstream disruption distinct from a uniform
+shortage shock.
+
+`Project.unmet_demand_penalty_base`, `jk_cost_per_km`, `jk_flat_cost`,
+`kd_cost_per_km`, `kd_flat_cost` make the previously hard-coded defaults
+(`DEFAULT_UNMET_PENALTY_BASE` etc. in `model_builder.py`) per-project and
+user-editable from the Setup tab, defaulting to the same values as before.
+
 ## 9. Known limitations (stated plainly, not hidden)
 
 - **No inventory/storage state carried between periods.** The time-series

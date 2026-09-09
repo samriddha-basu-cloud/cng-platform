@@ -42,7 +42,10 @@ async function renderEntitySection(containerEl, projectId, entityKey) {
     <div id="${entityKey}-form-wrap" style="display:none;margin-bottom:16px;"></div>
     <div style="overflow-x:auto;">
       <table class="data-table"><thead><tr>
-        ${cfg.tableCols.map(c => `<th>${(cfg.fields.find(f => f.key === c) || { label: c }).label}</th>`).join("")}
+        ${cfg.tableCols.map(c => {
+          const f = cfg.fields.find(f => f.key === c) || { label: c };
+          return `<th title="${f.help || ''}">${f.label}</th>`;
+        }).join("")}
         <th></th>
       </tr></thead><tbody id="${entityKey}-tbody"></tbody></table>
     </div>
@@ -56,9 +59,10 @@ async function renderEntitySection(containerEl, projectId, entityKey) {
 
   function buildForm(existing) {
     const fieldsHTML = cfg.fields.map(f => `
-      <div class="field" style="min-width:160px;">
+      <div class="field" style="min-width:160px;max-width:220px;">
         <label>${f.label}${f.required ? " *" : ""}</label>
         ${fieldInputHTML(f, existing ? existing[f.key] : undefined)}
+        ${f.help ? `<div class="text-muted" style="font-size:10.5px;line-height:1.35;margin-top:3px;">${f.help}</div>` : ""}
       </div>
     `).join("");
     return `

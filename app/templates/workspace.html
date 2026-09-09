@@ -44,6 +44,30 @@
       <button class="btn primary" id="saveSetupBtn">Save setup</button>
       <span class="text-muted" style="margin-left:10px;font-size:11.5px;">Model status: <span id="s-status" class="mono"></span></span>
     </div>
+
+    <div class="card" style="max-width:900px;margin-top:16px;">
+      <div class="card-title">Realism &amp; Constraint Modules</div>
+      <p class="text-muted" style="font-size:12.5px;margin-top:-4px;">
+        Every module below is <b>off by default</b> — the network solves exactly as before until you switch one on.
+        Each one reads its numbers from fields you set on the Network tab (per source/CGS/station/demand zone), so
+        turning a module on never injects a hidden assumption — it only starts <i>enforcing</i> values you've entered.
+      </p>
+      <div id="realismModules" class="grid cols-2"></div>
+      <div class="grid cols-2" style="margin-top:14px;">
+        <div class="field"><label>Unmet-demand penalty base (currency/unit)</label><input type="number" step="0.01" id="s-penalty-base" placeholder="e.g. 50"></div>
+        <div class="field"><label>Pressure drop rate (bar/km)</label><input type="number" step="0.01" id="s-pressure-drop" placeholder="e.g. 0.10, 0.15, 0.20"></div>
+        <div class="field"><label>CGS→station cost rate (currency/unit/km)</label><input type="number" step="0.001" id="s-jk-cost-km" placeholder="e.g. 0.02"></div>
+        <div class="field"><label>CGS→station flat cost (no coordinates)</label><input type="number" step="0.01" id="s-jk-flat" placeholder="e.g. 3.0"></div>
+        <div class="field"><label>Station→demand cost rate (currency/unit/km)</label><input type="number" step="0.001" id="s-kd-cost-km" placeholder="e.g. 0.03"></div>
+        <div class="field"><label>Station→demand flat cost (no coordinates)</label><input type="number" step="0.01" id="s-kd-flat" placeholder="e.g. 2.0"></div>
+      </div>
+      <p class="text-muted" style="font-size:11px;margin-top:6px;">
+        These six are the dynamic defaults used for legs that have no per-row entity of their own (the dense
+        CGS→station and station→demand hops have no corridor-like entity in the schema) and for the base
+        unmet-demand penalty before priority weighting. Change them here rather than in code.
+      </p>
+      <button class="btn" id="saveRealismBtn" style="margin-top:10px;">Save realism settings</button>
+    </div>
   </section>
 
   <!-- ================= NETWORK ================= -->
@@ -270,6 +294,35 @@ function showSection(name) {
 }
 
 // ---- setup ----
+const REALISM_MODULES = [
+  { key: "enable_pressure_model", label: "Gas pressure model",
+    hint: "Gates CGS→station and station→demand arcs on delivered pressure (source/CGS discharge pressure minus distance-based drop) vs. what the receiving station/zone needs — set discharge, min-inlet, dispensing and min-required-pressure fields on the Network tab first." },
+  { key: "enable_silent_hours", label: "Household silent hours",
+    hint: "Throttles a station's throughput to a household/private-vehicle demand zone that has Silent hours configured — the same daily volume has to fit into fewer delivery hours." },
+  { key: "enable_penalty_clauses", label: "Take-or-pay penalty clauses",
+    hint: "Charges a source's Take-or-pay penalty rate on the gap between its Contracted qty and actual offtake — sources need both fields set on the Network tab." },
+  { key: "enable_price_escalation", label: "Price / infrastructure escalation",
+    hint: "Compounds each source's Price escalation %/yr (supply cost) and each CGS/station's Infra cost escalation %/yr (fixed cost) across periods in the Simulate tab's Time-Series Simulation." },
+  { key: "enable_travel_distance_limit", label: "Household travel-distance limit",
+    hint: "Caps a demand zone's reachable stations to whichever is tighter — the station's own Service radius or the zone's own Max travel distance." },
+  { key: "enable_logistics_variation", label: "Logistics cost variation",
+    hint: "Lets the Simulate tab's 'Logistics cost spike' preset and sensitivity runs swing transport cost by each corridor's own Cost variation field." },
+  { key: "enable_demand_variability", label: "Industrial demand variability",
+    hint: "Lets the Simulate tab's 'Industrial demand variability' preset swing Industrial-type zones by their own Demand variability field." },
+];
+
+function renderRealismModules(p) {
+  document.getElementById('realismModules').innerHTML = REALISM_MODULES.map(m => `
+    <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-soft);cursor:pointer;">
+      <input type="checkbox" id="rm-${m.key}" ${p[m.key] ? 'checked' : ''} style="width:auto;margin-top:3px;">
+      <span>
+        <span style="font-weight:600;font-size:12.5px;">${m.label}</span>
+        <span class="text-muted" style="display:block;font-size:11px;line-height:1.4;margin-top:2px;">${m.hint}</span>
+      </span>
+    </label>
+  `).join('');
+}
+
 async function loadSetup() {
   currentProject = await api.get(`/api/projects/${PROJECT_ID}`);
   const p = currentProject;
@@ -285,6 +338,14 @@ async function loadSetup() {
   document.getElementById('s-status').textContent = p.status;
   document.getElementById('demoBadge').innerHTML = p.is_demo
     ? '<span class="tag-illustrative">illustrative demo data</span>' : '';
+
+  renderRealismModules(p);
+  document.getElementById('s-penalty-base').value = p.unmet_demand_penalty_base;
+  document.getElementById('s-pressure-drop').value = p.pressure_drop_rate_bar_per_km;
+  document.getElementById('s-jk-cost-km').value = p.jk_cost_per_km;
+  document.getElementById('s-jk-flat').value = p.jk_flat_cost;
+  document.getElementById('s-kd-cost-km').value = p.kd_cost_per_km;
+  document.getElementById('s-kd-flat').value = p.kd_flat_cost;
 }
 
 document.getElementById('saveSetupBtn').addEventListener('click', async () => {
@@ -301,6 +362,22 @@ document.getElementById('saveSetupBtn').addEventListener('click', async () => {
       description: document.getElementById('s-desc').value,
     });
     toast('Setup saved', 'ok');
+    loadSetup();
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+document.getElementById('saveRealismBtn').addEventListener('click', async () => {
+  try {
+    const payload = {};
+    for (const m of REALISM_MODULES) payload[m.key] = document.getElementById(`rm-${m.key}`).checked;
+    payload.unmet_demand_penalty_base = parseFloat(document.getElementById('s-penalty-base').value || 50);
+    payload.pressure_drop_rate_bar_per_km = parseFloat(document.getElementById('s-pressure-drop').value || 0.15);
+    payload.jk_cost_per_km = parseFloat(document.getElementById('s-jk-cost-km').value || 0.02);
+    payload.jk_flat_cost = parseFloat(document.getElementById('s-jk-flat').value || 3.0);
+    payload.kd_cost_per_km = parseFloat(document.getElementById('s-kd-cost-km').value || 0.03);
+    payload.kd_flat_cost = parseFloat(document.getElementById('s-kd-flat').value || 2.0);
+    await api.patch(`/api/projects/${PROJECT_ID}`, payload);
+    toast('Realism settings saved', 'ok');
     loadSetup();
   } catch (e) { toast(e.message, 'error'); }
 });

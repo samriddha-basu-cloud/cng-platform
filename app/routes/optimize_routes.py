@@ -24,7 +24,7 @@ def optimize_deterministic(project_id):
     data = request.get_json(force=True, silent=True) or {}
     scenario_id = data.get("scenario_id")
     overrides = data.get("overrides", {}) or {}
-    penalty_base = data.get("penalty_base", mb.DEFAULT_UNMET_PENALTY_BASE)
+    penalty_base = data.get("penalty_base")  # None -> engine falls back to the project's unmet_demand_penalty_base
 
     scenario = None
     if scenario_id:
@@ -95,7 +95,7 @@ def optimize_stochastic(project_id):
         return jsonify({"error": "Network has blocking validation errors.", "issues": errors}), 400
 
     data = request.get_json(force=True, silent=True) or {}
-    penalty_base = data.get("penalty_base", mb.DEFAULT_UNMET_PENALTY_BASE)
+    penalty_base = data.get("penalty_base")  # None -> engine falls back to the project's unmet_demand_penalty_base
 
     scenarios = [s for s in project.scenarios if s.is_default] or project.scenarios
     if not scenarios:

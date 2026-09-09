@@ -221,6 +221,14 @@ function renderOptResult(result) {
         </tbody></table>
       </div>
     </div>
+    ${result.contract_shortfalls && result.contract_shortfalls.length ? `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">Take-or-Pay Shortfalls</div>
+      <p class="text-muted" style="font-size:11.5px;margin-top:-6px;">Sources that took less than their contracted quantity still get billed a penalty on the gap — a real take-or-pay contract term, not a modeling artifact.</p>
+      <table class="data-table"><thead><tr><th>Source</th><th>Contracted</th><th>Shortfall</th><th>Penalty Rate</th></tr></thead><tbody>
+        ${result.contract_shortfalls.map(s => `<tr><td class="text-cell">${s.source}</td><td>${fmtNum(s.contracted_quantity)}</td><td>${fmtNum(s.shortfall)}</td><td>${fmtNum(s.penalty_rate,2)}</td></tr>`).join('')}
+      </tbody></table>
+    </div>` : ''}
     <div class="card">
       <div class="card-title">Demand Zones</div>
       <table class="data-table"><thead><tr><th>Zone</th><th>Priority</th><th>Demand</th><th>Unmet</th><th>Fulfilment</th></tr></thead><tbody>
@@ -264,7 +272,7 @@ let PRESETS = [];
 async function loadPresets() {
   PRESETS = await api.get(`/api/scenarios/${PROJECT_ID}/presets`);
   document.getElementById('presetButtons').innerHTML = PRESETS.map(p =>
-    `<button class="btn small" data-preset="${p.key}">${p.label}</button>`).join('');
+    `<button class="btn small" data-preset="${p.key}" title="${p.hint || ''}">${p.label}</button>`).join('');
   document.querySelectorAll('#presetButtons button').forEach(btn => {
     btn.addEventListener('click', () => runWhatif(btn.dataset.preset));
   });

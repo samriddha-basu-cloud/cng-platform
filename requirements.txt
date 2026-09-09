@@ -1,6 +1,7 @@
 Flask==3.0.3
 Pyomo==6.7.3
 highspy==1.7.2
+pulp==2.8.0
 networkx==3.3
 pandas==2.2.2
 numpy==1.26.4

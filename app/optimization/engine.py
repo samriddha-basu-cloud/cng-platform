@@ -41,7 +41,8 @@ def _solve_with_active_solver(m: pyo.ConcreteModel):
         return "error", runtime
 
     elif active.key in ("cbc", "gurobi", "cplex"):
-        solver = pyo.SolverFactory(active.key)
+        solver = pyo.SolverFactory(active.key, executable=active.executable) if active.executable \
+            else pyo.SolverFactory(active.key)
         result = solver.solve(m, tee=False)
         runtime = time.time() - start
         tc = result.solver.termination_condition
@@ -57,7 +58,9 @@ def _solve_with_active_solver(m: pyo.ConcreteModel):
         raise SolveError("No optimization solver is available. Install HiGHS (pip install highspy) or CBC.")
 
 
-def solve_network(nd: mb.NetworkData, penalty_base: float = mb.DEFAULT_UNMET_PENALTY_BASE) -> dict:
+def solve_network(nd: mb.NetworkData, penalty_base: float = None) -> dict:
+    if penalty_base is None:
+        penalty_base = nd.settings.get("unmet_demand_penalty_base", mb.DEFAULT_UNMET_PENALTY_BASE)
     m = mb.build_model(nd, penalty_base=penalty_base)
     num_vars = sum(1 for _ in m.component_data_objects(pyo.Var))
     num_constraints = sum(1 for _ in m.component_data_objects(pyo.Constraint))
@@ -109,6 +112,8 @@ def solve_network(nd: mb.NetworkData, penalty_base: float = mb.DEFAULT_UNMET_PEN
     jk_transport = sum(nd.jk_cost[(j, k)] * val(m.w[j, k]) for (j, k) in JK)
     kd_transport = sum(nd.kd_cost[(k, d)] * val(m.v[k, d]) for (k, d) in KD)
     shortage_cost = sum(penalty_base * penalty_weight(d) * val(m.u[d]) for d in D)
+    contract_penalty_cost = sum(nd.sources[s]["take_or_pay_penalty_rate"] * val(m.shortfall[s])
+                                 for s in getattr(m, "PS", [])) if hasattr(m, "shortfall") else 0.0
 
     result["objective_value"] = round(pyo.value(m.Obj), 4)
     result["cost_breakdown"] = {
@@ -116,7 +121,14 @@ def solve_network(nd: mb.NetworkData, penalty_base: float = mb.DEFAULT_UNMET_PEN
         "supply": round(supply_cost, 4),
         "transportation": round(sj_transport + jk_transport + kd_transport, 4),
         "shortage_penalty": round(shortage_cost, 4),
+        "contract_penalties": round(contract_penalty_cost, 4),
     }
+    if hasattr(m, "shortfall"):
+        result["contract_shortfalls"] = [
+            {"source": s, "contracted_quantity": nd.sources[s]["contracted_quantity"],
+             "shortfall": val(m.shortfall[s]), "penalty_rate": nd.sources[s]["take_or_pay_penalty_rate"]}
+            for s in m.PS if val(m.shortfall[s]) > 1e-6
+        ]
 
     result["facilities"] = {
         "cgs": [{"code": j, "open": bool(round(val(m.y[j]))), "infra_status": nd.cgs[j]["infra_status"],
@@ -173,9 +185,11 @@ def solve_network(nd: mb.NetworkData, penalty_base: float = mb.DEFAULT_UNMET_PEN
 
 
 def solve_stochastic(base_nd: mb.NetworkData, scenario_nds: dict, probabilities: dict,
-                      penalty_base: float = mb.DEFAULT_UNMET_PENALTY_BASE) -> dict:
+                      penalty_base: float = None) -> dict:
     """Two-stage stochastic solve. Returns expected cost, worst-case cost,
     shared facility decisions, and a per-scenario cost/service breakdown."""
+    if penalty_base is None:
+        penalty_base = base_nd.settings.get("unmet_demand_penalty_base", mb.DEFAULT_UNMET_PENALTY_BASE)
     m = mb.build_stochastic_model(base_nd, scenario_nds, probabilities, penalty_base)
     num_vars = sum(1 for _ in m.component_data_objects(pyo.Var))
     num_constraints = sum(1 for _ in m.component_data_objects(pyo.Constraint))

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from app.data import repo
-from app.services.scenario_service import build_preset_overrides, PRESET_LABELS
+from app.services.scenario_service import build_preset_overrides, PRESET_LABELS, PRESET_HINTS
 
 scenario_bp = Blueprint("scenarios", __name__, url_prefix="/api/scenarios")
 
@@ -39,7 +39,7 @@ def delete_scenario(project_id, scenario_id):
 @scenario_bp.get("/<int:project_id>/presets")
 def list_presets(project_id):
     repo.get_project(project_id)
-    return jsonify([{"key": k, "label": v} for k, v in PRESET_LABELS.items()])
+    return jsonify([{"key": k, "label": v, "hint": PRESET_HINTS.get(k, "")} for k, v in PRESET_LABELS.items()])
 
 
 @scenario_bp.get("/<int:project_id>/presets/<preset_key>")

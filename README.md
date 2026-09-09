@@ -59,6 +59,17 @@ simplified rather than fully built.
 - A hand-computed known-optimal test case the solver is asserted to match
   exactly (`tests/test_optimization.py::test_known_optimal_value`)
 
+**Realism modules (opt-in, Setup tab)**
+- Gas pressure feasibility on CGS→station and station→demand legs (discharge
+  pressure minus distance-based drop vs. required pressure)
+- Household "silent hours" throughput throttle, take-or-pay contract
+  penalty clauses, price/infrastructure escalation in the time-series
+  simulation, household travel-distance limits, logistics cost variation
+  and industrial demand variability presets
+- Every module is off by default and reads its numbers from fields you set
+  per source/CGS/station/demand zone - see `MODEL_DOCUMENTATION.md` section
+  8b for exactly what each one enforces and where its numbers come from
+
 **Scenario engine**
 - Scenario CRUD with per-entity parameter overrides
 - One-click experiment presets (20/40/60% shortage, demand surge,

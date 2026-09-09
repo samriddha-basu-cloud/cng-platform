@@ -103,6 +103,35 @@ def validate_network(project) -> list[dict]:
                 issues.append({"level": "error",
                                 "message": f"Demand zone {d.code} has no CNG station within its service radius - it cannot be served."})
 
+    # --- realism-module sanity checks (each only fires if the relevant
+    #     field is actually set, so a project not using a given module never
+    #     sees noise from it) ---
+    for s in project.sources:
+        if s.is_active and (s.take_or_pay_penalty_rate or 0) > 0 and (s.contracted_quantity or 0) <= 0:
+            issues.append({"level": "warning",
+                            "message": f"Source {s.code} has a take-or-pay penalty rate set but no contracted "
+                                       f"quantity - the penalty clause can never trigger."})
+
+    for d in project.demand_zones:
+        if d.silent_hours_start is not None and d.silent_hours_end is not None \
+                and d.demand_type not in ("Domestic", "Private Vehicles"):
+            issues.append({"level": "warning",
+                            "message": f"Demand zone {d.code} has silent hours configured but is demand type "
+                                       f"'{d.demand_type}' - silent hours model residential/household quiet "
+                                       f"periods and are usually only meaningful for Domestic or Private Vehicles zones."})
+
+    if getattr(project, "enable_pressure_model", False):
+        for d in project.demand_zones:
+            required = d.min_required_pressure_bar or 0
+            if required <= 0:
+                continue
+            best_case = max((st.dispensing_pressure_bar or 0) for st in active_stations) if active_stations else 0
+            if best_case < required:
+                issues.append({"level": "error",
+                                "message": f"Demand zone {d.code} requires {required:.0f} bar but no active station's "
+                                           f"dispensing pressure reaches that even before distance-based drop - "
+                                           f"raise a station's dispensing pressure or lower this zone's requirement."})
+
     # scenario probability check
     default_scenarios = [s for s in project.scenarios if s.is_default]
     if default_scenarios:

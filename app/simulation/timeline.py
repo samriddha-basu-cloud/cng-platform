@@ -11,13 +11,40 @@ the I_t variable in the reference project's spec - is a larger, separate
 piece of work). Each period's numbers are still real optimizer output;
 what's simplified is that periods don't share inventory state.
 """
+import copy
 from app.optimization import model_builder as mb, engine
+
+
+def _escalate(nd, t):
+    """Applies each source's annual price_escalation_pct to its supply_cost,
+    and each CGS/station's annual infrastructure_escalation_pct to its fixed
+    cost, compounded over `t` periods. Opt-in - only mutates anything when
+    the project's enable_price_escalation switch is on (checked by the
+    caller) and the entity itself carries a non-zero escalation rate, so a
+    network with none configured behaves exactly as before."""
+    if t == 0:
+        return nd
+    nd2 = copy.deepcopy(nd)
+    for s in nd2.sources.values():
+        rate = s.get("price_escalation_pct", 0) or 0
+        if rate:
+            s["supply_cost"] = s["supply_cost"] * (1 + rate) ** t
+    for c in nd2.cgs.values():
+        rate = c.get("infrastructure_escalation_pct", 0) or 0
+        if rate:
+            c["fixed_operating_cost"] = c["fixed_operating_cost"] * (1 + rate) ** t
+    for st in nd2.stations.values():
+        rate = st.get("infrastructure_escalation_pct", 0) or 0
+        if rate:
+            st["fixed_cost"] = st["fixed_cost"] * (1 + rate) ** t
+    return nd2
 
 
 def run_timeline(project, num_periods: int, shocks: dict = None):
     """shocks: {period_index: overrides_dict} - e.g. {2: {"demand_multiplier": 1.25}}"""
     shocks = shocks or {}
     base_nd = mb.snapshot_network(project)
+    price_escalation_on = getattr(project, "enable_price_escalation", False)
 
     periods = []
     for t in range(num_periods):
@@ -36,13 +63,15 @@ def run_timeline(project, num_periods: int, shocks: dict = None):
                 if k != "demand_multiplier":
                     overrides[k] = v
 
-        nd = mb.apply_overrides(base_nd, overrides)
+        period_nd = _escalate(base_nd, t) if price_escalation_on else base_nd
+        nd = mb.apply_overrides(period_nd, overrides)
         result = engine.solve_network(nd)
 
         row = {
             "period": t,
             "status": result["status"],
             "shock_applied": shocks.get(t, {}),
+            "escalation_applied": price_escalation_on,
         }
         if result["status"] == "optimal":
             row.update({

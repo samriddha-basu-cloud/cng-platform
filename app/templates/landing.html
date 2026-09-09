@@ -559,25 +559,52 @@
 
       <h3>Solvers</h3>
       <p>
-        The optimization engine is written against Pyomo's solver-agnostic API, so the
-        formulation above is identical no matter which solver executes it. Four are
-        supported, checked in this preference order at runtime — open-source first, no
-        commercial solver required to run the platform:
+        The optimization engine is written against Pyomo's solver-agnostic API
+        (<code>app/optimization/model_builder.py</code> builds one <code>ConcreteModel</code>;
+        <code>engine.py</code> solves it and reads results back off the variables) — the
+        formulation above is <em>identical</em> no matter which solver executes it, and nothing
+        in the model, the API, or the UI changes based on which one is active. Only solve speed
+        and, on very large instances, numerical robustness differ. Four solvers are supported,
+        checked in this preference order at runtime — <code>app/optimization/solver_registry.py</code>
+        is the single place that knows what's actually usable in the current environment, and it
+        reports whichever it finds first as the "Active Solver" throughout the app:
       </p>
       <div class="pill-row">
-        <span class="pill">HiGHS — bundled, default</span>
-        <span class="pill">CBC — open-source, pluggable</span>
-        <span class="pill">Gurobi — commercial, pluggable</span>
-        <span class="pill">CPLEX — commercial, pluggable</span>
+        <span class="pill">1. HiGHS — bundled, default</span>
+        <span class="pill">2. CBC — open-source, auto-provisioned</span>
+        <span class="pill">3. Gurobi — commercial, license required</span>
+        <span class="pill">4. CPLEX — commercial, license required</span>
       </div>
       <p style="margin-top:10px;">
-        <code>app/optimization/solver_registry.py</code> detects whichever of these is
-        actually installed and licensed in the current environment and reports it as
-        "Active Solver" throughout the app. HiGHS ships with the platform via the
-        <code>highspy</code> package and needs no separate installation; CBC needs its
-        binary on <code>PATH</code>; Gurobi and CPLEX need a valid license file. Nothing
-        about the model formulation, the API, or the UI changes based on which one is
-        active — only solve speed and (for very large instances) numerical robustness do.
+        <strong>HiGHS</strong> is a modern open-source MILP/LP solver, used via Pyomo's
+        <code>appsi</code> persistent interface and installed automatically through the
+        <code>highspy</code> PyPI package — no system install, no PATH setup, no license. It's
+        the default because it's fast, actively maintained, and needs nothing beyond
+        <code>pip install -r requirements.txt</code>.
+      </p>
+      <p>
+        <strong>CBC</strong> (COIN-OR Branch and Cut) is the other fully open-source option, and
+        it's auto-provisioned the same way: the registry first checks for a <code>cbc</code>
+        binary on <code>PATH</code> (a system package like <code>brew install cbc</code> or
+        <code>apt install coinor-cbc</code>), and if none is found, falls back to the CBC binary
+        that ships <em>inside</em> the <code>pulp</code> PyPI package for the current OS/architecture
+        (macOS, Linux x86_64/arm64, Windows are all covered) — so <code>pip install pulp</code>
+        is enough to bring CBC online with zero manual solver installation either. It runs as a
+        second, independent implementation of the same MILP — useful as a cross-check against
+        HiGHS on results that matter, since two different solver codebases agreeing on an optimum
+        is stronger evidence than one solver's word for it.
+      </p>
+      <p>
+        <strong>Gurobi</strong> and <strong>CPLEX</strong> are commercial, closed-source solvers
+        from Gurobi Optimization and IBM respectively. They genuinely cannot be auto-installed or
+        bundled the way HiGHS/CBC are — each requires its own separate installer and a paid,
+        machine- or user-tied license file that only the license holder can obtain (both do offer
+        free academic licenses). The registry detects them via Pyomo's <code>SolverFactory</code>
+        exactly like CBC, and the app will pick one up and use it automatically the moment it's
+        installed and licensed on the host machine — nothing else needs to change. Their presence
+        here reflects that <em>enterprise deployments that already hold a license</em> can point
+        this platform at them without touching the model code; they are not, and were never meant
+        to be, a requirement to run anything on this page.
       </p>
 
       <h3>Technical architecture</h3>

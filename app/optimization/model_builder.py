@@ -39,6 +39,22 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * r * math.asin(math.sqrt(a))
 
 
+def silent_hours_fraction(start, end):
+    """Returns the fraction of a 24h day left available for delivery once a
+    [start, end) 'silent hours' window is excluded (wraps past midnight if
+    end < start), or None if no window is configured. Used to throttle how
+    much of a household demand zone's daily volume a station can push
+    through, since compressing the same volume into fewer hours needs more
+    instantaneous capacity, not the capacity itself."""
+    if start is None or end is None:
+        return None
+    duration = (end - start) % 24
+    if duration == 0:
+        duration = 24  # start==end is treated as "silent all day"
+    available = max(24 - duration, 0.5)  # keep a sliver open so this throttles rather than fully zeroes the arc
+    return available / 24.0
+
+
 @dataclass
 class NetworkData:
     """Plain-python snapshot of a project's network, with scenario overrides
@@ -55,10 +71,36 @@ class NetworkData:
     kd_arcs: list = field(default_factory=list)   # list of (k, d)
     jk_cost: dict = field(default_factory=dict)
     kd_cost: dict = field(default_factory=dict)
+    kd_capacity_cap: dict = field(default_factory=dict)  # (k, d) -> extra cap, only set under the silent-hours module
+
+    # project-level toggles + dynamic global rates (see Project dataclass for docs).
+    # Always populated by snapshot_network(); defaults here only cover NetworkData
+    # built by hand (e.g. tests), and reproduce the platform's original behavior.
+    settings: dict = field(default_factory=lambda: {
+        "enable_pressure_model": False, "enable_silent_hours": False,
+        "enable_penalty_clauses": False, "enable_travel_distance_limit": False,
+        "unmet_demand_penalty_base": DEFAULT_UNMET_PENALTY_BASE,
+        "jk_cost_per_km": DEFAULT_JK_COST_PER_KM, "jk_flat_cost": DEFAULT_JK_FLAT_COST,
+        "kd_cost_per_km": DEFAULT_KD_COST_PER_KM, "kd_flat_cost": DEFAULT_KD_FLAT_COST,
+        "pressure_drop_rate_bar_per_km": 0.15,
+    })
 
 
 def snapshot_network(project) -> NetworkData:
     nd = NetworkData()
+    nd.settings = {
+        "enable_pressure_model": bool(getattr(project, "enable_pressure_model", False)),
+        "enable_silent_hours": bool(getattr(project, "enable_silent_hours", False)),
+        "enable_penalty_clauses": bool(getattr(project, "enable_penalty_clauses", False)),
+        "enable_travel_distance_limit": bool(getattr(project, "enable_travel_distance_limit", False)),
+        "unmet_demand_penalty_base": getattr(project, "unmet_demand_penalty_base", DEFAULT_UNMET_PENALTY_BASE) or DEFAULT_UNMET_PENALTY_BASE,
+        "jk_cost_per_km": getattr(project, "jk_cost_per_km", DEFAULT_JK_COST_PER_KM) or DEFAULT_JK_COST_PER_KM,
+        "jk_flat_cost": getattr(project, "jk_flat_cost", DEFAULT_JK_FLAT_COST) or DEFAULT_JK_FLAT_COST,
+        "kd_cost_per_km": getattr(project, "kd_cost_per_km", DEFAULT_KD_COST_PER_KM) or DEFAULT_KD_COST_PER_KM,
+        "kd_flat_cost": getattr(project, "kd_flat_cost", DEFAULT_KD_FLAT_COST) or DEFAULT_KD_FLAT_COST,
+        "pressure_drop_rate_bar_per_km": getattr(project, "pressure_drop_rate_bar_per_km", 0.15) or 0.0,
+    }
+
     for s in project.sources:
         if s.is_active:
             nd.sources[s.code] = {
@@ -67,6 +109,12 @@ def snapshot_network(project) -> NetworkData:
                 "min_operational_qty": s.min_operational_qty or 0,
                 "supply_cost": s.supply_cost or 0,
                 "reliability": s.reliability if s.reliability is not None else 1.0,
+                "contracted_quantity": getattr(s, "contracted_quantity", 0) or 0,
+                "is_upstream_gail": getattr(s, "is_upstream_gail", False),
+                "interruption_probability": getattr(s, "interruption_probability", 0.0) or 0.0,
+                "price_escalation_pct": getattr(s, "price_escalation_pct", 0.0) or 0.0,
+                "take_or_pay_penalty_rate": getattr(s, "take_or_pay_penalty_rate", 0.0) or 0.0,
+                "delivery_pressure_bar": getattr(s, "delivery_pressure_bar", None),
             }
     for c in project.cgs_list:
         if c.is_active:
@@ -77,6 +125,8 @@ def snapshot_network(project) -> NetworkData:
                 "max_expansion": c.max_expansion or 0,
                 "infra_status": c.infra_status,
                 "latitude": c.latitude, "longitude": c.longitude,
+                "discharge_pressure_bar": getattr(c, "discharge_pressure_bar", None),
+                "infrastructure_escalation_pct": getattr(c, "infrastructure_escalation_pct", 0.0) or 0.0,
             }
     for st in project.stations:
         if st.is_active:
@@ -87,6 +137,9 @@ def snapshot_network(project) -> NetworkData:
                 "infra_status": st.infra_status,
                 "latitude": st.latitude, "longitude": st.longitude,
                 "service_radius_km": st.demand_service_radius_km or 0,
+                "min_inlet_pressure_bar": getattr(st, "min_inlet_pressure_bar", None),
+                "dispensing_pressure_bar": getattr(st, "dispensing_pressure_bar", None),
+                "infrastructure_escalation_pct": getattr(st, "infrastructure_escalation_pct", 0.0) or 0.0,
             }
     for d in project.demand_zones:
         nd.demand_zones[d.code] = {
@@ -95,6 +148,12 @@ def snapshot_network(project) -> NetworkData:
             "min_service_level": d.min_service_level if d.min_service_level is not None else 0.7,
             "max_service_level": d.max_service_level if d.max_service_level is not None else 1.0,
             "latitude": d.latitude, "longitude": d.longitude,
+            "demand_type": getattr(d, "demand_type", "Mixed"),
+            "min_required_pressure_bar": getattr(d, "min_required_pressure_bar", 0.0) or 0.0,
+            "max_travel_distance_km": getattr(d, "max_travel_distance_km", None),
+            "silent_hours_start": getattr(d, "silent_hours_start", None),
+            "silent_hours_end": getattr(d, "silent_hours_end", None),
+            "demand_variability_pct": getattr(d, "demand_variability_pct", 0.0) or 0.0,
         }
         nd.priority_by_zone[d.code] = d.priority_class.to_dict() if d.priority_class else None
 
@@ -105,28 +164,61 @@ def snapshot_network(project) -> NetworkData:
                     "origin": cor.origin_code, "destination": cor.destination_code,
                     "capacity": cor.capacity or 0, "transport_cost": cor.transport_cost or 0,
                     "loss_pct": cor.loss_pct or 0, "pipeline_type": cor.pipeline_type,
+                    "cost_variation_pct": getattr(cor, "cost_variation_pct", 0.0) or 0.0,
                 }
 
-    # dense CGS -> station arcs
+    jk_cost_per_km = nd.settings["jk_cost_per_km"]
+    jk_flat_cost = nd.settings["jk_flat_cost"]
+    kd_cost_per_km = nd.settings["kd_cost_per_km"]
+    kd_flat_cost = nd.settings["kd_flat_cost"]
+    pressure_model_on = nd.settings["enable_pressure_model"]
+    drop_rate = nd.settings["pressure_drop_rate_bar_per_km"]
+
+    # dense CGS -> station arcs - gated by pressure feasibility when the
+    # pressure module is enabled (a station can't be fed if the CGS's
+    # discharge pressure, net of distance-based drop, falls below what the
+    # station needs to operate its compressors)
     for j, jinfo in nd.cgs.items():
         for k, kinfo in nd.stations.items():
             dist = haversine(jinfo.get("latitude"), jinfo.get("longitude"), kinfo.get("latitude"), kinfo.get("longitude"))
-            cost = dist * DEFAULT_JK_COST_PER_KM if dist is not None else DEFAULT_JK_FLAT_COST
+            cost = dist * jk_cost_per_km if dist is not None else jk_flat_cost
+            if pressure_model_on and dist is not None:
+                discharge = jinfo.get("discharge_pressure_bar")
+                min_inlet = kinfo.get("min_inlet_pressure_bar")
+                if discharge is not None and min_inlet is not None:
+                    delivered = discharge - drop_rate * dist
+                    if delivered < min_inlet:
+                        continue  # pressure would arrive too low - this CGS cannot feed this station
             nd.jk_arcs.append((j, k))
             nd.jk_cost[(j, k)] = cost
 
-    # station -> demand arcs, gated by service radius
+    # station -> demand arcs, gated by service radius (and, when enabled,
+    # the zone's own travel-distance tolerance and minimum required pressure)
     for k, kinfo in nd.stations.items():
         for d, dinfo in nd.demand_zones.items():
             dist = haversine(kinfo.get("latitude"), kinfo.get("longitude"), dinfo.get("latitude"), dinfo.get("longitude"))
             radius = kinfo.get("service_radius_km") or 0
+            if nd.settings["enable_travel_distance_limit"] and dinfo.get("max_travel_distance_km") is not None:
+                radius = min(radius, dinfo["max_travel_distance_km"])
             if dist is None:
                 # no coordinates on one side - allow the arc (can't geofence it) but flag via flat cost
                 nd.kd_arcs.append((k, d))
-                nd.kd_cost[(k, d)] = DEFAULT_KD_FLAT_COST
+                nd.kd_cost[(k, d)] = kd_flat_cost
             elif dist <= radius:
+                if pressure_model_on:
+                    dispensing = kinfo.get("dispensing_pressure_bar")
+                    required = dinfo.get("min_required_pressure_bar") or 0
+                    if dispensing is not None and required > 0:
+                        delivered = dispensing - drop_rate * dist
+                        if delivered < required:
+                            continue  # can't guarantee this zone's required pressure from this station
                 nd.kd_arcs.append((k, d))
-                nd.kd_cost[(k, d)] = dist * DEFAULT_KD_COST_PER_KM
+                nd.kd_cost[(k, d)] = dist * kd_cost_per_km
+
+            if (k, d) in nd.kd_cost and nd.settings["enable_silent_hours"]:
+                frac = silent_hours_fraction(dinfo.get("silent_hours_start"), dinfo.get("silent_hours_end"))
+                if frac is not None:
+                    nd.kd_capacity_cap[(k, d)] = kinfo["capacity"] * frac
 
     return nd
 
@@ -192,7 +284,9 @@ def apply_overrides(nd: NetworkData, overrides: dict) -> NetworkData:
     return nd2
 
 
-def build_model(nd: NetworkData, penalty_base: float = DEFAULT_UNMET_PENALTY_BASE) -> pyo.ConcreteModel:
+def build_model(nd: NetworkData, penalty_base: float = None) -> pyo.ConcreteModel:
+    if penalty_base is None:
+        penalty_base = nd.settings.get("unmet_demand_penalty_base", DEFAULT_UNMET_PENALTY_BASE)
     m = pyo.ConcreteModel(name="CNG_Network_Design")
 
     S = list(nd.sources.keys())
@@ -229,6 +323,31 @@ def build_model(nd: NetworkData, penalty_base: float = DEFAULT_UNMET_PENALTY_BAS
         pc = nd.priority_by_zone.get(d)
         return pc["penalty_weight"] if pc else 1.0
 
+    # take-or-pay contract penalty clauses (opt-in): sources with both the
+    # project's penalty-clause module enabled and their own
+    # take_or_pay_penalty_rate > 0 get a shortfall variable measuring how far
+    # actual offtake falls below their contracted_quantity, penalized in the
+    # objective - the contractual reality that under-lifting a take-or-pay
+    # contract still costs money even though less gas was actually taken.
+    penalty_clauses_on = nd.settings.get("enable_penalty_clauses", False)
+    penalized_sources = [s for s in S if penalty_clauses_on and nd.sources[s].get("take_or_pay_penalty_rate", 0) > 0
+                          and nd.sources[s].get("contracted_quantity", 0) > 0]
+    if penalized_sources:
+        m.PS = pyo.Set(initialize=penalized_sources)
+        m.shortfall = pyo.Var(m.PS, domain=pyo.NonNegativeReals)
+
+        def shortfall_rule(m, s):
+            offtake = sum(m.x[ss, j] for (ss, j) in SJ if ss == s)
+            return m.shortfall[s] >= nd.sources[s]["contracted_quantity"] - offtake
+        m.ShortfallDef = pyo.Constraint(m.PS, rule=shortfall_rule)
+
+    # silent-hours throughput throttle (opt-in): for household/private-vehicle
+    # zones with a configured no-delivery window, a station can push at most
+    # capacity * (available_hours/24) through that one arc - the same daily
+    # volume has to fit into fewer hours, so it competes harder for capacity.
+    silent_hours_on = nd.settings.get("enable_silent_hours", False)
+    silent_arcs = [(k, d) for (k, d) in KD if silent_hours_on and (k, d) in nd.kd_capacity_cap]
+
     def obj_rule(m):
         fixed = sum(nd.cgs[j]["fixed_operating_cost"] * m.y[j] for j in J) \
               + sum(nd.stations[k]["fixed_cost"] * m.z[k] for k in K)
@@ -237,7 +356,8 @@ def build_model(nd: NetworkData, penalty_base: float = DEFAULT_UNMET_PENALTY_BAS
         jk_transport = sum(nd.jk_cost[(j, k)] * m.w[j, k] for (j, k) in JK)
         kd_transport = sum(nd.kd_cost[(k, d)] * m.v[k, d] for (k, d) in KD)
         shortage = sum(penalty_base * penalty_weight(d) * m.u[d] for d in D)
-        return fixed + supply_cost + sj_transport + jk_transport + kd_transport + shortage
+        contract_penalty = sum(nd.sources[s]["take_or_pay_penalty_rate"] * m.shortfall[s] for s in penalized_sources)
+        return fixed + supply_cost + sj_transport + jk_transport + kd_transport + shortage + contract_penalty
 
     m.Obj = pyo.Objective(rule=obj_rule, sense=pyo.minimize)
 
@@ -252,6 +372,13 @@ def build_model(nd: NetworkData, penalty_base: float = DEFAULT_UNMET_PENALTY_BAS
     def corridor_cap_rule(m, s, j):
         return m.x[s, j] <= corridor_by_sj[(s, j)]["capacity"]
     m.CorridorCap = pyo.Constraint(m.SJ, rule=corridor_cap_rule)
+
+    if silent_arcs:
+        m.SilentArcs = pyo.Set(initialize=silent_arcs, dimen=2)
+
+        def silent_hours_cap_rule(m, k, d):
+            return m.v[k, d] <= nd.kd_capacity_cap[(k, d)]
+        m.SilentHoursCap = pyo.Constraint(m.SilentArcs, rule=silent_hours_cap_rule)
 
     def cgs_balance_rule(m, j):
         inflow = sum(m.x[s, jj] for (s, jj) in SJ if jj == j)
@@ -289,7 +416,7 @@ def build_model(nd: NetworkData, penalty_base: float = DEFAULT_UNMET_PENALTY_BAS
 
 
 def build_stochastic_model(base_nd: NetworkData, scenario_nds: dict, probabilities: dict,
-                            penalty_base: float = DEFAULT_UNMET_PENALTY_BASE) -> pyo.ConcreteModel:
+                            penalty_base: float = None) -> pyo.ConcreteModel:
     """Two-stage stochastic model: facility decisions (y, z) are shared
     "here-and-now" first-stage variables; flows and unmet demand are
     scenario-indexed recourse variables. Facility/arc topology (S, J, K,
@@ -300,6 +427,8 @@ def build_stochastic_model(base_nd: NetworkData, scenario_nds: dict, probabiliti
     scenario_nds: {scenario_key: NetworkData}  (already overridden per scenario)
     probabilities: {scenario_key: float}, should sum to ~1
     """
+    if penalty_base is None:
+        penalty_base = base_nd.settings.get("unmet_demand_penalty_base", DEFAULT_UNMET_PENALTY_BASE)
     m = pyo.ConcreteModel(name="CNG_Network_Design_Stochastic")
 
     S = list(base_nd.sources.keys())
@@ -337,6 +466,25 @@ def build_stochastic_model(base_nd: NetworkData, scenario_nds: dict, probabiliti
         pc = nd.priority_by_zone.get(d)
         return pc["penalty_weight"] if pc else 1.0
 
+    # take-or-pay penalty clauses, scenario-indexed (a source's contracted
+    # quantity and penalty rate don't change across scenarios, but its
+    # actual offtake does) - same opt-in module as the deterministic model.
+    penalty_clauses_on = base_nd.settings.get("enable_penalty_clauses", False)
+    penalized_sources = [s for s in S if penalty_clauses_on and base_nd.sources[s].get("take_or_pay_penalty_rate", 0) > 0
+                          and base_nd.sources[s].get("contracted_quantity", 0) > 0]
+    if penalized_sources:
+        m.PS = pyo.Set(initialize=penalized_sources)
+        m.shortfall = pyo.Var(m.PS, m.T, domain=pyo.NonNegativeReals)
+
+        def shortfall_rule(m, s, t):
+            offtake = sum(m.x[ss, j, t] for (ss, j) in SJ if ss == s)
+            return m.shortfall[s, t] >= base_nd.sources[s]["contracted_quantity"] - offtake
+        m.ShortfallDef = pyo.Constraint(m.PS, m.T, rule=shortfall_rule)
+
+    # silent-hours throughput throttle, scenario-indexed
+    silent_hours_on = base_nd.settings.get("enable_silent_hours", False)
+    silent_arcs = [(k, d) for (k, d) in KD if silent_hours_on and (k, d) in base_nd.kd_capacity_cap]
+
     def obj_rule(m):
         fixed = sum(base_nd.cgs[j]["fixed_operating_cost"] * m.y[j] for j in J) \
               + sum(base_nd.stations[k]["fixed_cost"] * m.z[k] for k in K)
@@ -349,7 +497,8 @@ def build_stochastic_model(base_nd: NetworkData, scenario_nds: dict, probabiliti
             jk_transport = sum(nd.jk_cost[(j, k)] * m.w[j, k, t] for (j, k) in JK)
             kd_transport = sum(nd.kd_cost[(k, d)] * m.v[k, d, t] for (k, d) in KD)
             shortage = sum(penalty_base * penalty_weight(nd, d) * m.u[d, t] for d in D)
-            expected_variable += pi * (supply_cost + sj_transport + jk_transport + kd_transport + shortage)
+            contract_penalty = sum(base_nd.sources[s]["take_or_pay_penalty_rate"] * m.shortfall[s, t] for s in penalized_sources)
+            expected_variable += pi * (supply_cost + sj_transport + jk_transport + kd_transport + shortage + contract_penalty)
         return fixed + expected_variable
     m.Obj = pyo.Objective(rule=obj_rule, sense=pyo.minimize)
 
@@ -399,5 +548,12 @@ def build_stochastic_model(base_nd: NetworkData, scenario_nds: dict, probabiliti
         beta = nd.demand_zones[d]["min_service_level"]
         return m.u[d, t] <= (1 - beta) * nd.demand_zones[d]["base_demand"]
     m.ServiceLevel = pyo.Constraint(m.D, m.T, rule=service_level_rule)
+
+    if silent_arcs:
+        m.SilentArcs = pyo.Set(initialize=silent_arcs, dimen=2)
+
+        def silent_hours_cap_rule(m, k, d, t):
+            return m.v[k, d, t] <= base_nd.kd_capacity_cap[(k, d)]
+        m.SilentHoursCap = pyo.Constraint(m.SilentArcs, m.T, rule=silent_hours_cap_rule)
 
     return m

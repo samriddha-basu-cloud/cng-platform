@@ -45,15 +45,19 @@ def seed_demo_project_simple():
 
     # ---- Sources ----
     source_defs = [
-        {"code": "SRC-DOM", "name": "Domestic Field A", "source_type": "Domestic",
+        {"code": "SRC-DOM", "name": "Domestic Field A (GAIL grid)", "source_type": "Domestic",
          "latitude": 23.75, "longitude": 68.85, "max_capacity": 500, "base_availability": 1.0,
-         "min_operational_qty": 50, "supply_cost": 5.0, "contracted_quantity": 450, "reliability": 0.95},
+         "min_operational_qty": 50, "supply_cost": 5.0, "contracted_quantity": 450, "reliability": 0.95,
+         "is_upstream_gail": True, "interruption_probability": 0.25, "price_escalation_pct": 0.04,
+         "take_or_pay_penalty_rate": 1.5, "delivery_pressure_bar": 25},
         {"code": "SRC-LNG1", "name": "LNG Terminal North", "source_type": "LNG Terminal",
          "latitude": 22.30, "longitude": 69.10, "max_capacity": 800, "base_availability": 1.0,
-         "min_operational_qty": 100, "supply_cost": 8.0, "contracted_quantity": 700, "reliability": 0.9},
+         "min_operational_qty": 100, "supply_cost": 8.0, "contracted_quantity": 700, "reliability": 0.9,
+         "price_escalation_pct": 0.03, "delivery_pressure_bar": 28},
         {"code": "SRC-LNG2", "name": "LNG Terminal South", "source_type": "LNG Terminal",
          "latitude": 17.98, "longitude": 73.18, "max_capacity": 400, "base_availability": 1.0,
-         "min_operational_qty": 50, "supply_cost": 6.5, "contracted_quantity": 350, "reliability": 0.85},
+         "min_operational_qty": 50, "supply_cost": 6.5, "contracted_quantity": 350, "reliability": 0.85,
+         "price_escalation_pct": 0.03, "delivery_pressure_bar": 24},
     ]
     for s in source_defs:
         repo.add_entity(project, "sources", s)
@@ -65,11 +69,14 @@ def seed_demo_project_simple():
     # ---- CGS ----
     for c in [
         {"code": "CGS-N1", "name": "City Gate North-1", "latitude": 28.60, "longitude": 77.20,
-         "capacity": 850, "fixed_operating_cost": 200, "expansion_cost": 0.4, "max_expansion": 300, "infra_status": "existing"},
+         "capacity": 850, "fixed_operating_cost": 200, "expansion_cost": 0.4, "max_expansion": 300, "infra_status": "existing",
+         "discharge_pressure_bar": 19, "infrastructure_escalation_pct": 0.02},
         {"code": "CGS-W1", "name": "City Gate West-1", "latitude": 19.08, "longitude": 72.88,
-         "capacity": 600, "fixed_operating_cost": 150, "expansion_cost": 0.5, "max_expansion": 250, "infra_status": "existing"},
+         "capacity": 600, "fixed_operating_cost": 150, "expansion_cost": 0.5, "max_expansion": 250, "infra_status": "existing",
+         "discharge_pressure_bar": 19, "infrastructure_escalation_pct": 0.02},
         {"code": "CGS-C1", "name": "City Gate Central-1 (candidate)", "latitude": 21.15, "longitude": 79.09,
-         "capacity": 400, "fixed_operating_cost": 180, "expansion_cost": 0.45, "max_expansion": 200, "infra_status": "candidate"},
+         "capacity": 400, "fixed_operating_cost": 180, "expansion_cost": 0.45, "max_expansion": 200, "infra_status": "candidate",
+         "discharge_pressure_bar": 18, "infrastructure_escalation_pct": 0.03},
     ]:
         repo.add_entity(project, "cgs", c)
 
@@ -93,15 +100,20 @@ def seed_demo_project_simple():
     # ---- CNG Stations ----
     for st in [
         {"code": "STN-N1", "name": "Station North-1", "latitude": 28.61, "longitude": 77.21,
-         "capacity": 300, "fixed_cost": 40, "expansion_cost": 0.3, "infra_status": "existing", "demand_service_radius_km": 40},
+         "capacity": 300, "fixed_cost": 40, "expansion_cost": 0.3, "infra_status": "existing", "demand_service_radius_km": 40,
+         "min_inlet_pressure_bar": 16, "dispensing_pressure_bar": 200},
         {"code": "STN-N2", "name": "Station North-2", "latitude": 28.45, "longitude": 77.03,
-         "capacity": 300, "fixed_cost": 45, "expansion_cost": 0.3, "infra_status": "existing", "demand_service_radius_km": 40},
+         "capacity": 300, "fixed_cost": 45, "expansion_cost": 0.3, "infra_status": "existing", "demand_service_radius_km": 40,
+         "min_inlet_pressure_bar": 16, "dispensing_pressure_bar": 200},
         {"code": "STN-W1", "name": "Station West-1", "latitude": 19.07, "longitude": 72.87,
-         "capacity": 250, "fixed_cost": 35, "expansion_cost": 0.35, "infra_status": "existing", "demand_service_radius_km": 35},
+         "capacity": 250, "fixed_cost": 35, "expansion_cost": 0.35, "infra_status": "existing", "demand_service_radius_km": 35,
+         "min_inlet_pressure_bar": 16, "dispensing_pressure_bar": 200},
         {"code": "STN-W2", "name": "Station West-2", "latitude": 19.22, "longitude": 72.98,
-         "capacity": 250, "fixed_cost": 38, "expansion_cost": 0.35, "infra_status": "candidate", "demand_service_radius_km": 35},
+         "capacity": 250, "fixed_cost": 38, "expansion_cost": 0.35, "infra_status": "candidate", "demand_service_radius_km": 35,
+         "min_inlet_pressure_bar": 15, "dispensing_pressure_bar": 210},
         {"code": "STN-C1", "name": "Station Central-1", "latitude": 21.16, "longitude": 79.10,
-         "capacity": 180, "fixed_cost": 30, "expansion_cost": 0.4, "infra_status": "candidate", "demand_service_radius_km": 45},
+         "capacity": 180, "fixed_cost": 30, "expansion_cost": 0.4, "infra_status": "candidate", "demand_service_radius_km": 45,
+         "min_inlet_pressure_bar": 15, "dispensing_pressure_bar": 220},
     ]:
         repo.add_entity(project, "stations", st)
 
@@ -112,15 +124,18 @@ def seed_demo_project_simple():
         {"code": "DZ-NOI", "name": "Noida", "latitude": 28.54, "longitude": 77.39, "base_demand": 150,
          "growth_rate": 0.05, "demand_type": "Commercial", "priority": "Commercial", "min_service_level": 0.70},
         {"code": "DZ-GUR", "name": "Gurugram", "latitude": 28.46, "longitude": 77.03, "base_demand": 130,
-         "growth_rate": 0.07, "demand_type": "Private Vehicles", "priority": "Private Vehicles", "min_service_level": 0.60},
+         "growth_rate": 0.07, "demand_type": "Private Vehicles", "priority": "Private Vehicles", "min_service_level": 0.60,
+         "max_travel_distance_km": 25},
         {"code": "DZ-MUM", "name": "Mumbai", "latitude": 19.08, "longitude": 72.88, "base_demand": 180,
          "growth_rate": 0.05, "demand_type": "Mixed", "priority": "Public Transport", "min_service_level": 0.95},
         {"code": "DZ-THA", "name": "Thane", "latitude": 19.22, "longitude": 72.98, "base_demand": 140,
          "growth_rate": 0.06, "demand_type": "Commercial", "priority": "Commercial", "min_service_level": 0.70},
         {"code": "DZ-NAV", "name": "Navi Mumbai", "latitude": 19.03, "longitude": 73.02, "base_demand": 120,
-         "growth_rate": 0.06, "demand_type": "Private Vehicles", "priority": "Private Vehicles", "min_service_level": 0.60},
+         "growth_rate": 0.06, "demand_type": "Private Vehicles", "priority": "Private Vehicles", "min_service_level": 0.60,
+         "silent_hours_start": 23, "silent_hours_end": 6, "max_travel_distance_km": 20},
         {"code": "DZ-NAG", "name": "Nagpur", "latitude": 21.15, "longitude": 79.09, "base_demand": 95,
-         "growth_rate": 0.08, "demand_type": "Industrial", "priority": "Industrial", "min_service_level": 0.80},
+         "growth_rate": 0.08, "demand_type": "Industrial", "priority": "Industrial", "min_service_level": 0.80,
+         "min_required_pressure_bar": 180, "demand_variability_pct": 0.18},
     ]
     for d in demand_defs:
         pdef = dict(d)
@@ -198,21 +213,28 @@ def seed_demo_project_advanced():
         })
 
     source_defs = [
-        {"code": "SRC-DOM1", "name": "Domestic Field - Gujarat", "source_type": "Domestic",
+        {"code": "SRC-DOM1", "name": "Domestic Field - Gujarat (GAIL grid)", "source_type": "Domestic",
          "latitude": 21.62, "longitude": 73.00, "max_capacity": 600, "base_availability": 1.0,
-         "min_operational_qty": 50, "supply_cost": 5.0, "contracted_quantity": 500, "reliability": 0.95},
-        {"code": "SRC-DOM2", "name": "Domestic Field - Assam", "source_type": "Domestic",
+         "min_operational_qty": 50, "supply_cost": 5.0, "contracted_quantity": 500, "reliability": 0.95,
+         "is_upstream_gail": True, "interruption_probability": 0.20, "price_escalation_pct": 0.04,
+         "take_or_pay_penalty_rate": 1.5, "delivery_pressure_bar": 25},
+        {"code": "SRC-DOM2", "name": "Domestic Field - Assam (GAIL grid)", "source_type": "Domestic",
          "latitude": 27.30, "longitude": 95.30, "max_capacity": 300, "base_availability": 1.0,
-         "min_operational_qty": 30, "supply_cost": 5.5, "contracted_quantity": 250, "reliability": 0.90},
+         "min_operational_qty": 30, "supply_cost": 5.5, "contracted_quantity": 250, "reliability": 0.90,
+         "is_upstream_gail": True, "interruption_probability": 0.35, "price_escalation_pct": 0.04,
+         "take_or_pay_penalty_rate": 1.2, "delivery_pressure_bar": 24},
         {"code": "SRC-LNG1", "name": "LNG Terminal - Kochi", "source_type": "LNG Terminal",
          "latitude": 9.93, "longitude": 76.26, "max_capacity": 500, "base_availability": 1.0,
-         "min_operational_qty": 60, "supply_cost": 8.0, "contracted_quantity": 400, "reliability": 0.88},
+         "min_operational_qty": 60, "supply_cost": 8.0, "contracted_quantity": 400, "reliability": 0.88,
+         "price_escalation_pct": 0.03, "delivery_pressure_bar": 27},
         {"code": "SRC-LNG2", "name": "LNG Terminal - Dahej", "source_type": "LNG Terminal",
          "latitude": 21.70, "longitude": 72.55, "max_capacity": 550, "base_availability": 1.0,
-         "min_operational_qty": 60, "supply_cost": 7.5, "contracted_quantity": 450, "reliability": 0.90},
+         "min_operational_qty": 60, "supply_cost": 7.5, "contracted_quantity": 450, "reliability": 0.90,
+         "price_escalation_pct": 0.03, "delivery_pressure_bar": 28},
         {"code": "SRC-OTH1", "name": "Compressed Biogas Blending - Hosur", "source_type": "Other",
          "latitude": 12.74, "longitude": 77.83, "max_capacity": 80, "base_availability": 1.0,
-         "min_operational_qty": 10, "supply_cost": 9.0, "contracted_quantity": 60, "reliability": 0.80},
+         "min_operational_qty": 10, "supply_cost": 9.0, "contracted_quantity": 60, "reliability": 0.80,
+         "price_escalation_pct": 0.05, "delivery_pressure_bar": 22},
     ]
     for s in source_defs:
         repo.add_entity(project, "sources", s)
@@ -223,15 +245,20 @@ def seed_demo_project_advanced():
 
     for c in [
         {"code": "CGS-N1", "name": "City Gate North - Delhi", "latitude": 28.61, "longitude": 77.21,
-         "capacity": 700, "fixed_operating_cost": 220, "expansion_cost": 0.4, "max_expansion": 300, "infra_status": "existing"},
+         "capacity": 700, "fixed_operating_cost": 220, "expansion_cost": 0.4, "max_expansion": 300, "infra_status": "existing",
+         "discharge_pressure_bar": 19, "infrastructure_escalation_pct": 0.02},
         {"code": "CGS-W1", "name": "City Gate West - Mumbai", "latitude": 19.08, "longitude": 72.88,
-         "capacity": 900, "fixed_operating_cost": 280, "expansion_cost": 0.4, "max_expansion": 350, "infra_status": "existing"},
+         "capacity": 900, "fixed_operating_cost": 280, "expansion_cost": 0.4, "max_expansion": 350, "infra_status": "existing",
+         "discharge_pressure_bar": 19, "infrastructure_escalation_pct": 0.02},
         {"code": "CGS-S1", "name": "City Gate South - Bengaluru", "latitude": 12.97, "longitude": 77.59,
-         "capacity": 650, "fixed_operating_cost": 210, "expansion_cost": 0.45, "max_expansion": 280, "infra_status": "existing"},
+         "capacity": 650, "fixed_operating_cost": 210, "expansion_cost": 0.45, "max_expansion": 280, "infra_status": "existing",
+         "discharge_pressure_bar": 19, "infrastructure_escalation_pct": 0.02},
         {"code": "CGS-E1", "name": "City Gate East - Kolkata (candidate)", "latitude": 22.57, "longitude": 88.36,
-         "capacity": 400, "fixed_operating_cost": 190, "expansion_cost": 0.5, "max_expansion": 220, "infra_status": "candidate"},
+         "capacity": 400, "fixed_operating_cost": 190, "expansion_cost": 0.5, "max_expansion": 220, "infra_status": "candidate",
+         "discharge_pressure_bar": 18, "infrastructure_escalation_pct": 0.03},
         {"code": "CGS-C1", "name": "City Gate Central - Nagpur (candidate)", "latitude": 21.15, "longitude": 79.09,
-         "capacity": 350, "fixed_operating_cost": 170, "expansion_cost": 0.5, "max_expansion": 200, "infra_status": "candidate"},
+         "capacity": 350, "fixed_operating_cost": 170, "expansion_cost": 0.5, "max_expansion": 200, "infra_status": "candidate",
+         "discharge_pressure_bar": 18, "infrastructure_escalation_pct": 0.03},
     ]:
         repo.add_entity(project, "cgs", c)
 
@@ -286,15 +313,18 @@ def seed_demo_project_advanced():
         {"code": "DZ-DEL", "name": "Delhi", "latitude": 28.61, "longitude": 77.21, "base_demand": 200,
          "growth_rate": 0.06, "demand_type": "Mixed", "priority": "Public Transport", "min_service_level": 0.95},
         {"code": "DZ-GUR", "name": "Gurugram", "latitude": 28.46, "longitude": 77.03, "base_demand": 140,
-         "growth_rate": 0.07, "demand_type": "Private Vehicles", "priority": "Private Vehicles", "min_service_level": 0.60},
+         "growth_rate": 0.07, "demand_type": "Private Vehicles", "priority": "Private Vehicles", "min_service_level": 0.60,
+         "max_travel_distance_km": 25},
         {"code": "DZ-MUM", "name": "Mumbai", "latitude": 19.08, "longitude": 72.88, "base_demand": 230,
          "growth_rate": 0.05, "demand_type": "Mixed", "priority": "Public Transport", "min_service_level": 0.95},
         {"code": "DZ-PUN", "name": "Pune", "latitude": 18.52, "longitude": 73.86, "base_demand": 110,
          "growth_rate": 0.08, "demand_type": "Commercial", "priority": "Commercial", "min_service_level": 0.70},
         {"code": "DZ-BLR", "name": "Bengaluru", "latitude": 12.97, "longitude": 77.59, "base_demand": 170,
-         "growth_rate": 0.07, "demand_type": "Domestic", "priority": "Critical Services", "min_service_level": 0.90},
+         "growth_rate": 0.07, "demand_type": "Domestic", "priority": "Critical Services", "min_service_level": 0.90,
+         "silent_hours_start": 23, "silent_hours_end": 6, "max_travel_distance_km": 22},
         {"code": "DZ-CHE", "name": "Chennai", "latitude": 13.08, "longitude": 80.27, "base_demand": 150,
-         "growth_rate": 0.06, "demand_type": "Industrial", "priority": "Industrial", "min_service_level": 0.80},
+         "growth_rate": 0.06, "demand_type": "Industrial", "priority": "Industrial", "min_service_level": 0.80,
+         "min_required_pressure_bar": 180, "demand_variability_pct": 0.20},
         {"code": "DZ-KOL", "name": "Kolkata", "latitude": 22.57, "longitude": 88.36, "base_demand": 120,
          "growth_rate": 0.09, "demand_type": "Transport", "priority": "Public Transport", "min_service_level": 0.95},
         {"code": "DZ-NAG", "name": "Nagpur", "latitude": 21.15, "longitude": 79.09, "base_demand": 90,
