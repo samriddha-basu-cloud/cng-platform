@@ -11,15 +11,26 @@ instances.
 from app.optimization import model_builder as mb
 
 
-def diagnose(nd: mb.NetworkData) -> dict:
+def diagnose(nd: mb.NetworkData, month: int = None) -> dict:
+    """month: when given (spec section 76), evaluates supply/demand totals at that
+    specific month of the time-indexed model (nd.sources[s]["monthly_availability"][t]
+    / nd.demand_zones[d]["monthly_demand"][t]) instead of the flat single-period
+    scalars, and every finding is labeled with which month it applies to."""
     findings = []
 
-    total_supply = sum(s["base_availability"] * s["max_capacity"] for s in nd.sources.values())
-    total_demand = sum(d["base_demand"] for d in nd.demand_zones.values())
+    if month is not None:
+        total_supply = sum(s["monthly_availability"].get(month, s["base_availability"] * s["max_capacity"])
+                            for s in nd.sources.values())
+        total_demand = sum(d["monthly_demand"].get(month, d["base_demand"]) for d in nd.demand_zones.values())
+    else:
+        total_supply = sum(s["base_availability"] * s["max_capacity"] for s in nd.sources.values())
+        total_demand = sum(d["base_demand"] for d in nd.demand_zones.values())
     if total_supply < total_demand:
         findings.append({
             "cause": "Insufficient total supply",
-            "detail": f"Total available supply ({total_supply:,.1f}) is less than total demand ({total_demand:,.1f}).",
+            "month": month,
+            "detail": f"Total available supply ({total_supply:,.1f}) is less than total demand ({total_demand:,.1f})"
+                      f"{f' in month {month}' if month else ''}.",
             "suggestions": ["Increase source availability/capacity", "Add another source",
                              "Lower demand assumptions", "Relax minimum service-level requirements"],
         })
@@ -47,7 +58,11 @@ def diagnose(nd: mb.NetworkData) -> dict:
             })
 
     # aggregate minimum-service-level feasibility (necessary, not sufficient, condition)
-    min_required = sum(d["base_demand"] * d["min_service_level"] for d in nd.demand_zones.values())
+    if month is not None:
+        min_required = sum(d["monthly_demand"].get(month, d["base_demand"]) * d["min_service_level"]
+                            for d in nd.demand_zones.values())
+    else:
+        min_required = sum(d["base_demand"] * d["min_service_level"] for d in nd.demand_zones.values())
     if min_required > total_supply:
         findings.append({
             "cause": "Minimum service-level requirement exceeds available supply",
@@ -85,3 +100,21 @@ def diagnose(nd: mb.NetworkData) -> dict:
         })
 
     return {"is_infeasible": True, "findings": findings}
+
+
+def diagnose_multiperiod(nd: mb.NetworkData, months: list) -> dict:
+    """For the time-indexed model: runs diagnose() per month and returns the
+    per-month results plus which month(s) look tightest, so an infeasible
+    12-month solve names the actual bottleneck month(s) rather than a single
+    flat (and therefore misleading) aggregate diagnosis."""
+    per_month = {}
+    worst_month, worst_gap = None, None
+    for t in months:
+        d = diagnose(nd, month=t)
+        per_month[t] = d
+        supply = sum(s["monthly_availability"].get(t, 0) for s in nd.sources.values())
+        demand = sum(z["monthly_demand"].get(t, 0) for z in nd.demand_zones.values())
+        gap = demand - supply
+        if worst_gap is None or gap > worst_gap:
+            worst_gap, worst_month = gap, t
+    return {"is_infeasible": True, "worst_month": worst_month, "per_month": per_month}

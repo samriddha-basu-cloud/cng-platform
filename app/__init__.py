@@ -18,6 +18,8 @@ def create_app(config_class=Config):
     from app.routes.simulation_routes import simulation_bp
     from app.routes.analytics_routes import analytics_bp
     from app.routes.report_routes import report_bp
+    from app.routes.excel_routes import excel_bp
+    from app.routes.assumption_routes import assumption_bp
 
     app.register_blueprint(page_bp)
     app.register_blueprint(project_bp)
@@ -30,6 +32,8 @@ def create_app(config_class=Config):
     app.register_blueprint(simulation_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(report_bp)
+    app.register_blueprint(excel_bp)
+    app.register_blueprint(assumption_bp)
 
     @app.errorhandler(404)
     def not_found(e):

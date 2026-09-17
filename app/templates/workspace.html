@@ -12,13 +12,15 @@
 <div class="stepper" id="stepper">
   <div class="step active" data-section="setup" title="Project metadata: name, region, units, planning horizon"><span class="num">1</span> Setup</div>
   <div class="step" data-section="network" title="Add sources, corridors, CGS, stations, demand zones, priority classes"><span class="num">2</span> Network</div>
-  <div class="step" data-section="map" title="Geographic view of the network you've built"><span class="num">3</span> Map</div>
-  <div class="step" data-section="dashboard" title="Validation status and a one-screen resilience summary"><span class="num">4</span> Dashboard</div>
-  <div class="step" data-section="scenarios" title="Define scarcity/demand scenarios and compare them"><span class="num">5</span> Scenarios</div>
-  <div class="step" data-section="optimize" title="Run the MILP solver: deterministic, stochastic, or robust"><span class="num">6</span> Optimize</div>
-  <div class="step" data-section="simulate" title="One-click shocks and multi-period growth timeline"><span class="num">7</span> Simulate</div>
-  <div class="step" data-section="analyze" title="Resilience, Pareto frontier, sensitivity, recommendations"><span class="num">8</span> Analyze</div>
-  <div class="step" data-section="report" title="Export results; toggle Industry vs Academic mode"><span class="num">9</span> Report</div>
+  <div class="step" data-section="planning" title="Excel import/export, monthly supply/demand data, 12-month optimization"><span class="num">3</span> Planning</div>
+  <div class="step" data-section="map" title="Geographic view of the network you've built"><span class="num">4</span> Map</div>
+  <div class="step" data-section="dashboard" title="Validation status and a one-screen resilience summary"><span class="num">5</span> Dashboard</div>
+  <div class="step" data-section="scenarios" title="Define scarcity/demand scenarios and compare them"><span class="num">6</span> Scenarios</div>
+  <div class="step" data-section="optimize" title="Run the MILP solver: deterministic, stochastic, or robust"><span class="num">7</span> Optimize</div>
+  <div class="step" data-section="simulate" title="One-click shocks and multi-period growth timeline"><span class="num">8</span> Simulate</div>
+  <div class="step" data-section="analyze" title="Resilience, Pareto frontier, sensitivity, recommendations"><span class="num">9</span> Analyze</div>
+  <div class="step" data-section="control-tower" title="Executive KPIs, alerts, bottlenecks, investment analysis, run comparison"><span class="num">10</span> Control Tower</div>
+  <div class="step" data-section="report" title="Export results; toggle Industry vs Academic mode"><span class="num">11</span> Report</div>
 </div>
 
 <div class="shell">
@@ -81,6 +83,21 @@
       <div class="tab" data-entity="priorities">Priority Classes</div>
     </div>
     <div class="card" id="entityPanel"></div>
+  </section>
+
+  <!-- ================= PLANNING ================= -->
+  <section class="section" id="section-planning">
+    <p class="text-muted" style="font-size:12.5px;margin-top:-4px;margin-bottom:16px;">
+      Import/export planning data via Excel, edit month-by-month supply/demand/capacity, and run the
+      genuinely time-indexed 12-month MILP (one model with flows indexed by month, not 12 independent
+      solves — see MODEL_DOCUMENTATION.md).
+    </p>
+    <div class="tabs" id="planningTabs">
+      <div class="tab active" data-panel="import" title="Download templates/sample data, upload, validate, preview, import">Excel Import</div>
+      <div class="tab" data-panel="grid" title="Edit monthly supply/demand/capacity directly">Monthly Data</div>
+      <div class="tab" data-panel="results" title="Run the 12-month MILP and see monthly allocation">Monthly Results</div>
+    </div>
+    <div id="planningPanel"></div>
   </section>
 
   <!-- ================= MAP ================= -->
@@ -242,6 +259,22 @@
     <div class="card" id="analyzePanel"></div>
   </section>
 
+  <!-- ================= CONTROL TOWER ================= -->
+  <section class="section" id="section-control-tower">
+    <p class="text-muted" style="font-size:12.5px;margin-top:-4px;margin-bottom:16px;">
+      Executive KPIs, rule-based alerts, binding-constraint bottlenecks with finite-difference
+      marginal values, investment decision support, and run comparison — all computed from real
+      multi-period MILP solves.
+    </p>
+    <div class="tabs" id="controlTowerTabs">
+      <div class="tab active" data-panel="kpis" title="KPIs and CRITICAL/WARNING/INFO alerts">Executive KPIs &amp; Alerts</div>
+      <div class="tab" data-panel="bottlenecks" title="Binding constraints and their marginal value">Bottlenecks</div>
+      <div class="tab" data-panel="investment" title="Minimum CAPEX for target service / max service for budget">Investment Analysis</div>
+      <div class="tab" data-panel="compare" title="Compare two stored optimization runs">Run Comparison</div>
+    </div>
+    <div id="controlTowerPanel"></div>
+  </section>
+
   <!-- ================= REPORT ================= -->
   <section class="section" id="section-report">
     <div class="grid cols-2">
@@ -274,6 +307,8 @@
 <script src="{{ url_for('static', filename='js/entity_config.js') }}"></script>
 <script src="{{ url_for('static', filename='js/network_builder.js') }}"></script>
 <script src="{{ url_for('static', filename='js/network_map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/monthly_planning.js') }}"></script>
+<script src="{{ url_for('static', filename='js/control_tower.js') }}"></script>
 <script>
 const PROJECT_ID = {{ project_id }};
 let currentProject = null;
@@ -291,6 +326,8 @@ function showSection(name) {
     setTimeout(() => { networkMap.invalidateSize(); refreshNetworkMap(PROJECT_ID); }, 50);
   }
   if (name === 'dashboard') refreshDashboard();
+  if (name === 'planning') renderPlanningSection();
+  if (name === 'control-tower') renderControlTowerSection();
 }
 
 // ---- setup ----

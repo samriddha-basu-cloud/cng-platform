@@ -264,10 +264,38 @@ def delete_scenario(project: E.Project, scenario_id: int):
 
 
 # -------------------------------------------------------- assumptions -----
-def add_assumption(project: E.Project, **kwargs) -> E.Assumption:
+# The Assumption Register (spec section 62): Parameter/Value/Unit/Source/Owner/
+# Date/Confidence/Type for every planning number that isn't verified fact.
+def add_assumption(project: E.Project, save: bool = True, **kwargs) -> E.Assumption:
     a = E.Assumption(id=project.next_id(), project_id=project.id, **kwargs)
     project.assumptions.append(a)
+    if save:
+        save_project(project)
     return a
+
+
+def list_assumptions(project: E.Project) -> list:
+    return project.assumptions
+
+
+def update_assumption(project: E.Project, assumption_id: int, data: dict) -> E.Assumption:
+    a = next((x for x in project.assumptions if x.id == assumption_id), None)
+    if a is None:
+        raise NotFound(f"Assumption {assumption_id} not found in project {project.id}")
+    editable = ["entity_type", "entity_code", "parameter", "value", "unit", "source", "status", "confidence", "notes"]
+    for f in editable:
+        if f in data:
+            setattr(a, f, data[f])
+    save_project(project)
+    return a
+
+
+def delete_assumption(project: E.Project, assumption_id: int):
+    idx = next((i for i, x in enumerate(project.assumptions) if x.id == assumption_id), None)
+    if idx is None:
+        raise NotFound(f"Assumption {assumption_id} not found in project {project.id}")
+    project.assumptions.pop(idx)
+    save_project(project)
 
 
 # --------------------------------------------------------- run history ----

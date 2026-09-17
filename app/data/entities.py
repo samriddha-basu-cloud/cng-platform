@@ -10,7 +10,7 @@ JSON files.
 """
 from dataclasses import dataclass, field, fields, asdict
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 def now_iso():
@@ -41,6 +41,10 @@ class Source:
     price_escalation_pct: float = 0.0     # annual % escalation applied to supply_cost across simulation periods
     take_or_pay_penalty_rate: float = 0.0  # currency/unit charged on (contracted_quantity - actual offtake), if positive
     delivery_pressure_bar: float = 25.0   # pressure this source injects gas into the network at
+    # month ("1".."12") -> absolute available gas that month, in gas_unit. Empty = no monthly
+    # override; the time-indexed optimizer then falls back to base_availability * max_capacity
+    # for every month, so existing projects behave identically until monthly data is entered.
+    monthly_availability: Dict[str, float] = field(default_factory=dict)
 
     def to_dict(self):
         return asdict(self)
@@ -66,6 +70,10 @@ class Corridor:
     is_active: bool = True
     cost_variation_pct: float = 0.0  # +/- logistics cost variability band (fuel price, route/traffic risk);
                                       # used by the logistics-variation preset and sensitivity runs, not the base solve
+    # month ("1".."12") -> override capacity/transport_cost for that month. Empty = flat
+    # `capacity`/`transport_cost` applies to every month (backward compatible default).
+    monthly_capacity: Dict[str, float] = field(default_factory=dict)
+    monthly_transport_cost: Dict[str, float] = field(default_factory=dict)
 
     def to_dict(self):
         return asdict(self)
@@ -87,6 +95,12 @@ class CGS:
     is_active: bool = True
     discharge_pressure_bar: float = 19.0        # pressure at which this CGS feeds stations
     infrastructure_escalation_pct: float = 0.0  # annual capex/opex escalation applied across simulation periods
+    # storage/inventory buffer at this CGS (spec section 23), opt-in via Project.enable_storage.
+    # capacity=0 (the default) makes the inventory variable pin to 0 every month, so a project
+    # with no storage configured behaves exactly as before even with the module on.
+    storage_capacity: float = 0
+    storage_cost: float = 0             # currency / unit / month held in inventory
+    opening_inventory: float = 0        # inventory level at the start of month 1
 
     def to_dict(self):
         return asdict(self)
@@ -103,6 +117,7 @@ class CNGStation:
     capacity: float = 0
     fixed_cost: float = 0
     expansion_cost: float = 0
+    max_expansion: float = 0            # max additional capacity the expansion decision variable may add (spec section 21)
     infra_status: str = "existing"
     demand_service_radius_km: float = 50
     is_active: bool = True
@@ -135,6 +150,14 @@ class DemandZone:
     silent_hours_end: Optional[int] = None         # ...to here (wraps past midnight if end < start). Meaningful mainly for
                                                      # Domestic / Private Vehicles zones (residential quiet hours)
     demand_variability_pct: float = 0.0            # +/- band representing seasonal/industrial demand swings around base_demand
+    # month ("1".."12") -> absolute demand that month, in demand_unit. Empty = no monthly
+    # override; the time-indexed optimizer falls back to base_demand for every month.
+    monthly_demand: Dict[str, float] = field(default_factory=dict)
+    # month ("1".."12") -> OBSERVED actual demand that month (spec section 31, Forecast vs
+    # Actual), recorded after the fact. Sparse by design - a month with no reported actual
+    # simply isn't compared yet. Purely observational: never read by the optimizer itself,
+    # only by app/analytics/forecast_actual.py.
+    actual_demand: Dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self):
         # populated after load by _link_relationships() - a live PriorityClass
@@ -225,6 +248,10 @@ class Project:
     time_granularity: str = "monthly"
     planning_horizon_years: int = 5
     num_periods: int = 1
+    # Horizon (in months) for the TIME-INDEXED multi-period MILP (model_builder.build_time_indexed_model).
+    # Distinct from num_periods, which drives the older sequential-solve simulation (app/simulation/timeline.py)
+    # and is unaffected by this. Default 12 = a standard annual monthly plan.
+    monthly_horizon: int = 12
     num_scenarios: int = 1
     status: str = "Draft"
     is_demo: bool = False
@@ -245,6 +272,13 @@ class Project:
     enable_travel_distance_limit: bool = False  # zone-side max travel distance, on top of station service radius
     enable_logistics_variation: bool = False   # variable logistics cost swings in sensitivity/what-if runs
     enable_demand_variability: bool = False    # industrial/seasonal demand swing in sensitivity/what-if runs
+    enable_storage: bool = False               # CGS inventory carryover in the multi-period MILP (spec section 23)
+
+    # --- dataset versioning (spec section 55) - set automatically on a
+    #     successful Excel import; blank until the first import happens ---
+    dataset_version: str = ""
+    dataset_imported_at: str = ""
+    dataset_source: str = ""
 
     # --- dynamic global defaults (used for legs that have no per-row
     #     entity of their own - the dense CGS->station and station->demand
@@ -277,6 +311,7 @@ class Project:
             "demand_unit": self.demand_unit, "time_granularity": self.time_granularity,
             "planning_horizon_years": self.planning_horizon_years,
             "num_periods": self.num_periods, "num_scenarios": self.num_scenarios,
+            "monthly_horizon": self.monthly_horizon,
             "status": self.status, "is_demo": self.is_demo,
             "created_at": self.created_at,
             "enable_pressure_model": self.enable_pressure_model,
@@ -286,6 +321,9 @@ class Project:
             "enable_travel_distance_limit": self.enable_travel_distance_limit,
             "enable_logistics_variation": self.enable_logistics_variation,
             "enable_demand_variability": self.enable_demand_variability,
+            "enable_storage": self.enable_storage,
+            "dataset_version": self.dataset_version, "dataset_imported_at": self.dataset_imported_at,
+            "dataset_source": self.dataset_source,
             "unmet_demand_penalty_base": self.unmet_demand_penalty_base,
             "jk_cost_per_km": self.jk_cost_per_km, "jk_flat_cost": self.jk_flat_cost,
             "kd_cost_per_km": self.kd_cost_per_km, "kd_flat_cost": self.kd_flat_cost,

@@ -55,11 +55,11 @@ def update_project(project_id):
     editable = [
         "name", "description", "region", "currency", "gas_unit", "demand_unit",
         "time_granularity", "planning_horizon_years", "num_periods",
-        "num_scenarios", "status",
+        "num_scenarios", "status", "monthly_horizon",
         # realism-module toggles + their dynamic global defaults (Setup tab)
         "enable_pressure_model", "enable_silent_hours", "enable_penalty_clauses",
         "enable_price_escalation", "enable_travel_distance_limit",
-        "enable_logistics_variation", "enable_demand_variability",
+        "enable_logistics_variation", "enable_demand_variability", "enable_storage",
         "unmet_demand_penalty_base", "jk_cost_per_km", "jk_flat_cost",
         "kd_cost_per_km", "kd_flat_cost", "pressure_drop_rate_bar_per_km",
     ]

@@ -4,6 +4,9 @@ from app.optimization import model_builder as mb, engine
 from app.analytics import resilience as resilience_mod
 from app.analytics import pareto as pareto_mod
 from app.analytics import sensitivity as sensitivity_mod
+from app.analytics import bottlenecks as bottlenecks_mod
+from app.analytics import control_tower as control_tower_mod
+from app.analytics import forecast_actual as forecast_actual_mod
 from app.analytics.recommendations import generate_recommendations
 from app.services.scenario_service import build_preset_overrides
 from app.utils.validation import validate_network
@@ -82,6 +85,52 @@ def recommendations(project_id):
 
     recs = generate_recommendations(base_result, severe_result, base_nd)
     return jsonify({"recommendations": recs, "base_status": base_result["status"]})
+
+
+@analytics_bp.get("/<int:project_id>/bottlenecks")
+def bottlenecks(project_id):
+    """Binding-constraint / bottleneck analysis for the time-indexed
+    multi-period MILP (spec section 19), plus finite-difference marginal
+    value estimates for the top few (spec section 20) unless
+    ?marginal=false is passed (each one costs an extra full MILP resolve)."""
+    project = repo.get_project(project_id)
+    errors = _blocking_errors(project)
+    if errors:
+        return jsonify({"error": "Network has blocking validation errors.", "issues": errors}), 400
+
+    nd = mb.snapshot_network(project)
+    result = engine.solve_multiperiod(nd)
+    if result["status"] != "optimal":
+        return jsonify({"error": f"Multi-period solve was not optimal (status={result['status']}).",
+                         "diagnostics": result.get("diagnostics")}), 400
+
+    analysis = bottlenecks_mod.analyze_bottlenecks(nd, result)
+    payload = {"critical": analysis["critical"], "records": analysis["records"]}
+    if request.args.get("marginal", "true").lower() != "false":
+        payload["marginal_values"] = bottlenecks_mod.marginal_value_analysis(nd, result, top_n=5)
+    return jsonify(payload)
+
+
+@analytics_bp.get("/<int:project_id>/control-tower")
+def control_tower(project_id):
+    """Executive KPIs + rule-based alerts + top bottlenecks, all computed
+    from a real multi-period solve (spec sections 34-36, 63, 85) - never a
+    static/hard-coded number."""
+    project = repo.get_project(project_id)
+    errors = _blocking_errors(project)
+    if errors:
+        return jsonify({"error": "Network has blocking validation errors.", "issues": errors}), 400
+    return jsonify(control_tower_mod.build_control_tower(project))
+
+
+@analytics_bp.get("/<int:project_id>/forecast-vs-actual")
+def forecast_vs_actual(project_id):
+    """Forecast vs Actual (spec section 31): compares each demand zone's
+    planning forecast against its recorded actual_demand. Read-only -
+    set actuals via PATCH /api/network/<pid>/demand/<id> {"actual_demand": {"3": 142}}."""
+    project = repo.get_project(project_id)
+    nd = mb.snapshot_network(project)
+    return jsonify(forecast_actual_mod.compute_forecast_vs_actual(nd))
 
 
 @analytics_bp.get("/<int:project_id>/summary")
